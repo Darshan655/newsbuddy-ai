@@ -64,7 +64,7 @@ def create_call(
 
     with httpx.Client(timeout=30) as client:
         response = client.post(
-            f"{VAPI_BASE_URL}/call/phone",
+            f"{VAPI_BASE_URL}/call",
             headers={
                 "Authorization": f"Bearer {settings.VAPI_API_KEY}",
                 "Content-Type": "application/json",
