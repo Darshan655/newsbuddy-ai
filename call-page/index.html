@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Talk to NewsBuddy — live voice call</title>
+<meta name="description" content="Talk to NewsBuddy right in your browser. Tap to start a live voice call and hear today's local news — you can interrupt and ask questions anytime." />
+<meta name="theme-color" content="#14161C" />
+
+<!-- Favicon: a small rising sun (same as the marketing site) -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314161C'/%3E%3Ccircle cx='16' cy='21' r='6' fill='%23F2A33C'/%3E%3Cg stroke='%23F2A33C' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='16' y1='6' x2='16' y2='9'/%3E%3Cline x1='6' y1='12' x2='8' y2='13.5'/%3E%3Cline x1='26' y1='12' x2='24' y2='13.5'/%3E%3C/g%3E%3Cline x1='4' y1='27' x2='28' y2='27' stroke='%236FA287' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+<!-- Fonts: Fraunces (serif headlines) + Hind (Latin + Devanagari) — matching the marketing site -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Hind:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+  /* ---------- Palette & tokens (shared with marketing-site/index.html) ---------- */
+  :root{
+    --bg:        #14161C;   /* pre-dawn sky */
+    --bg-soft:   #1B1E27;
+    --surface:   rgba(246,241,231,0.045);
+    --surface-2: rgba(246,241,231,0.07);
+    --cream:     #F6F1E7;   /* warm light */
+    --cream-dim: rgba(246,241,231,0.74);
+    --cream-faint: rgba(246,241,231,0.52);
+    --marigold:  #F2A33C;   /* first light */
+    --marigold-ink: #14161C;
+    --marigold-soft: rgba(242,163,60,0.14);
+    --sage:      #6FA287;   /* verified local / your turn */
+    --sage-soft: rgba(111,162,135,0.16);
+    --terracotta:#D6603F;   /* end call / breaking */
+    --terracotta-soft: rgba(214,96,63,0.16);
+    --line:      rgba(246,241,231,0.10);
+    --line-soft: rgba(246,241,231,0.06);
+
+    --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --sans:  'Hind', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+    --radius: 18px;
+    --radius-lg: 26px;
+  }
+
+  /* ---------- Reset / base ---------- */
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--cream);
+    line-height:1.6;
+    font-size:clamp(16px, 1rem + 0.2vw, 18px);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    min-height:100vh;
+    min-height:100svh;
+    overflow-x:hidden;
+  }
+  img,svg{ display:block; max-width:100%; }
+  button{ font-family:inherit; }
+
+  /* warm glow rising from below + a calm one up top, same recipe as the hero */
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(125% 80% at 50% 120%, rgba(242,163,60,0.26), rgba(214,96,63,0.08) 36%, transparent 62%),
+      radial-gradient(80% 50% at 82% -12%, rgba(111,162,135,0.10), transparent 60%);
+  }
+  /* subtle film grain over everything */
+  body::after{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity:0.04; mix-blend-mode:overlay;
+  }
+
+  ::selection{ background:var(--marigold); color:var(--marigold-ink); }
+  :focus-visible{ outline:2.5px solid var(--marigold); outline-offset:3px; border-radius:10px; }
+
+  /* ---------- Stage / card ---------- */
+  .stage{
+    position:relative; z-index:1;
+    min-height:100vh; min-height:100svh; min-height:100dvh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px;
+    padding:max(20px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom));
+  }
+  .card{
+    width:min(100%, 480px);
+    background:
+      radial-gradient(120% 80% at 50% -10%, rgba(242,163,60,0.07), transparent 55%),
+      var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    padding:clamp(26px, 4.5vw, 40px) clamp(20px, 4.5vw, 36px) clamp(24px, 4vw, 34px);
+    box-shadow:0 40px 90px -40px rgba(0,0,0,0.8);
+    text-align:center;
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  }
+
+  .brand{
+    display:inline-flex; align-items:center; gap:10px;
+    font-weight:600; font-size:0.98rem; color:var(--cream-dim);
+    margin-bottom:18px;
+  }
+  .brand .logo{ width:28px; height:28px; flex:none; }
+  .brand b{ font-weight:700; color:var(--cream); }
+
+  .card-title{
+    font-family:var(--serif); font-optical-sizing:auto;
+    font-variation-settings:'opsz' 110,'wght' 520;
+    font-size:clamp(2rem, 1.4rem + 2.6vw, 2.8rem);
+    line-height:1.06; letter-spacing:-0.015em;
+  }
+  .card-title em{
+    font-style:italic; color:var(--marigold);
+    font-variation-settings:'opsz' 110,'wght' 470;
+  }
+  .subtitle{
+    color:var(--cream-dim);
+    font-size:clamp(1rem, 0.96rem + 0.3vw, 1.12rem);
+    max-width:34ch; margin:14px auto 0;
+  }
+
+  /* ---------- Dialer (the focal circle + inviting pulse rings) ---------- */
+  .dialer{
+    position:relative;
+    width:172px; height:172px;
+    margin:clamp(26px, 5vw, 36px) auto clamp(18px, 3vw, 24px);
+    display:grid; place-items:center;
+  }
+  .ring{
+    position:absolute; inset:14px; border-radius:50%;
+    border:2px solid var(--marigold); opacity:0; pointer-events:none;
+  }
+  .orb{
+    position:relative; z-index:2;
+    width:132px; height:132px; border-radius:50%;
+    border:none; cursor:pointer;
+    display:grid; place-items:center;
+    background:radial-gradient(circle at 35% 30%, #f6b257, var(--marigold) 62%);
+    color:var(--marigold-ink);
+    box-shadow:
+      0 18px 44px -14px rgba(242,163,60,0.7),
+      inset 0 0 0 1px rgba(255,255,255,0.18);
+    transition:transform .18s ease, box-shadow .2s ease, background .2s ease, opacity .2s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .orb:hover{ transform:translateY(-2px); box-shadow:0 24px 56px -16px rgba(242,163,60,0.85), inset 0 0 0 1px rgba(255,255,255,0.22); }
+  .orb:active{ transform:translateY(0) scale(0.98); }
+  .orb svg{ width:48px; height:48px; }
+
+  /* the equalizer shown inside the orb while the call is live */
+  .orb-eq{ display:none; align-items:flex-end; gap:5px; height:46px; }
+  .orb-eq i{ width:6px; height:14px; border-radius:3px; background:var(--marigold-ink); opacity:0.85; }
+  .orb-spinner{ display:none; width:44px; height:44px; }
+
+  /* the small label that sits under the orb when idle */
+  .orb-label{
+    font-weight:600; font-size:1.05rem; letter-spacing:0.01em; color:var(--cream);
+    margin-top:2px;
+  }
+
+  /* ---------- Live status line (listening / speaking / connecting) ---------- */
+  .status{
+    min-height:30px;
+    display:none;            /* shown only when there is something to say */
+    align-items:center; justify-content:center; gap:11px;
+    font-weight:600; font-size:1.02rem; color:var(--cream);
+  }
+  .status .bars{ display:flex; align-items:flex-end; gap:3px; height:18px; }
+  .status .bars i{ width:3.5px; border-radius:2px; background:var(--sage); height:5px; }
+  .status[data-mode="speaking"] .bars i{ background:var(--marigold); }
+  .status[data-mode="connecting"]{ color:var(--cream-dim); }
+  .status .spin{
+    width:18px; height:18px; flex:none; border-radius:50%;
+    border:2.5px solid var(--line); border-top-color:var(--marigold);
+  }
+
+  .hint{
+    display:none; color:var(--cream-faint); font-size:0.86rem; margin-top:10px;
+  }
+
+  /* ---------- Live transcript ---------- */
+  .transcript{
+    display:none; text-align:left; margin-top:20px;
+    border:1px solid var(--line-soft); border-radius:var(--radius);
+    background:var(--bg-soft);
+    padding:14px;
+  }
+  .entries{
+    display:flex; flex-direction:column; gap:10px;
+    max-height:min(38vh, 280px); overflow-y:auto;
+    scrollbar-width:thin; scrollbar-color:var(--line) transparent;
+    padding-right:4px;
+  }
+  .entries::-webkit-scrollbar{ width:6px; }
+  .entries::-webkit-scrollbar-thumb{ background:var(--line); border-radius:99px; }
+  .t-empty{ color:var(--cream-faint); font-size:0.92rem; padding:6px 2px; }
+
+  .bubble{
+    max-width:88%;
+    padding:9px 13px; border-radius:14px;
+    font-size:0.96rem; line-height:1.4;
+    border:1px solid var(--line-soft);
+  }
+  .bubble .who{
+    display:block; font-size:0.68rem; font-weight:600; letter-spacing:0.08em;
+    text-transform:uppercase; margin-bottom:3px;
+  }
+  /* NewsBuddy (assistant) on the left, warm */
+  .bubble.assistant{
+    align-self:flex-start; border-bottom-left-radius:5px;
+    background:var(--marigold-soft); border-color:rgba(242,163,60,0.22);
+  }
+  .bubble.assistant .who{ color:var(--marigold); }
+  /* You (user) on the right, sage */
+  .bubble.user{
+    align-self:flex-end; border-bottom-right-radius:5px;
+    background:var(--sage-soft); border-color:rgba(111,162,135,0.24);
+  }
+  .bubble.user .who{ color:var(--sage); }
+  /* a not-yet-final (partial) line reads as in-progress */
+  .bubble.partial{ opacity:0.62; }
+  .bubble.partial .text::after{
+    content:""; display:inline-block; width:2px; height:1em;
+    margin-left:2px; vertical-align:-2px; background:currentColor; opacity:0.7;
+  }
+
+  /* ---------- End call ---------- */
+  .btn-end{
+    display:none; margin:22px auto 0;
+    align-items:center; justify-content:center; gap:10px;
+    padding:14px 28px; border-radius:999px; cursor:pointer;
+    background:var(--terracotta); color:#fff; border:1px solid transparent;
+    font-weight:600; font-size:1rem;
+    box-shadow:0 12px 30px -12px rgba(214,96,63,0.7);
+    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn-end:hover{ transform:translateY(-2px); background:#e06b4b; box-shadow:0 18px 38px -14px rgba(214,96,63,0.85); }
+  .btn-end:active{ transform:translateY(0); }
+  .btn-end svg{ width:20px; height:20px; transform:rotate(135deg); }
+
+  /* ---------- Friendly error ---------- */
+  .error{
+    display:none; text-align:left; margin-top:20px;
+    border:1px solid rgba(214,96,63,0.3); border-radius:var(--radius);
+    background:var(--terracotta-soft); color:var(--cream);
+    padding:14px 16px;
+    font-size:0.96rem; line-height:1.5;
+  }
+  .error b{ color:var(--terracotta); display:block; margin-bottom:3px; font-weight:700; }
+
+  .footnote{
+    position:relative; z-index:1;
+    color:var(--cream-faint); font-size:0.82rem; text-align:center;
+    max-width:42ch;
+  }
+
+  /* ---------- Motion ---------- */
+  @media (prefers-reduced-motion: no-preference){
+    /* idle: inviting "tap me" pulse rings */
+    .dialer.live-idle .ring{ animation:ring-pulse 2.6s cubic-bezier(.2,.6,.3,1) infinite; }
+    .dialer.live-idle .ring.r2{ animation-delay:.85s; }
+    .dialer.live-idle .ring.r3{ animation-delay:1.7s; }
+    @keyframes ring-pulse{
+      0%{ transform:scale(.7); opacity:.6; }
+      80%{ opacity:.04; }
+      100%{ transform:scale(1.9); opacity:0; }
+    }
+    /* active: rings keep breathing, tinted by who's talking */
+    .dialer.live-active .ring{ animation:ring-pulse 2.2s cubic-bezier(.2,.6,.3,1) infinite; border-color:var(--sage); }
+    .dialer.live-active .ring.r2{ animation-delay:.7s; }
+    .dialer.live-active .ring.r3{ animation-delay:1.4s; }
+    .dialer.live-active.speaking .ring{ border-color:var(--marigold); }
+
+    .orb-eq i{ animation:eq 1s ease-in-out infinite; }
+    .orb-eq i:nth-child(1){ animation-delay:-0.9s; }
+    .orb-eq i:nth-child(2){ animation-delay:-0.6s; }
+    .orb-eq i:nth-child(3){ animation-delay:-0.3s; }
+    .orb-eq i:nth-child(4){ animation-delay:-0.45s; }
+    .orb-eq i:nth-child(5){ animation-delay:-0.75s; }
+    @keyframes eq{ 0%,100%{ height:12px; } 50%{ height:44px; } }
+
+    .status .bars i{ animation:eq-sm 1s ease-in-out infinite; }
+    .status .bars i:nth-child(1){ animation-delay:-0.9s; }
+    .status .bars i:nth-child(2){ animation-delay:-0.5s; }
+    .status .bars i:nth-child(3){ animation-delay:-0.2s; }
+    .status .bars i:nth-child(4){ animation-delay:-0.7s; }
+    .status .bars i:nth-child(5){ animation-delay:-0.35s; }
+    @keyframes eq-sm{ 0%,100%{ height:5px; } 50%{ height:18px; } }
+
+    .orb-spinner{ animation:spin 0.9s linear infinite; }
+    .status .spin{ animation:spin 0.9s linear infinite; }
+    @keyframes spin{ to{ transform:rotate(360deg); } }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .dialer .ring.r1{ opacity:.4; transform:scale(1.2); }
+    .dialer .ring.r2, .dialer .ring.r3{ display:none; }
+    .orb-eq i{ height:24px; }
+    .status .bars i{ height:12px; }
+    .orb:hover, .btn-end:hover{ transform:none; }
+  }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <section class="card" aria-labelledby="cardTitle">
+      <span class="brand">
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="#1B1E27"/>
+          <circle cx="16" cy="21" r="6" fill="#F2A33C"/>
+          <g stroke="#F2A33C" stroke-width="2" stroke-linecap="round">
+            <line x1="16" y1="6" x2="16" y2="9"/><line x1="6" y1="12" x2="8" y2="13.5"/><line x1="26" y1="12" x2="24" y2="13.5"/>
+          </g>
+          <line x1="5" y1="27" x2="27" y2="27" stroke="#6FA287" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>News<b>Buddy</b> AI</span>
+      </span>
+
+      <h1 id="cardTitle" class="card-title">Talk to <em>NewsBuddy</em></h1>
+      <p class="subtitle" id="subtitle">Tap below to hear today's local news. You can interrupt and ask questions anytime.</p>
+
+      <div class="dialer" id="dialer">
+        <span class="ring r1" aria-hidden="true"></span>
+        <span class="ring r2" aria-hidden="true"></span>
+        <span class="ring r3" aria-hidden="true"></span>
+        <button class="orb" id="orb" type="button" aria-label="Start call" disabled>
+          <!-- phone icon (idle) -->
+          <span class="orb-icon" id="orbPhone" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.53 15.53 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24 11.36 11.36 0 003.56.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.36 11.36 0 00.57 3.56 1 1 0 01-.24 1.02l-2.21 2.21z"/></svg>
+          </span>
+          <!-- equalizer (active) -->
+          <span class="orb-eq" id="orbEq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          <!-- spinner (connecting) -->
+          <span class="orb-spinner" id="orbSpinner" aria-hidden="true">
+            <svg viewBox="0 0 44 44" fill="none"><circle cx="22" cy="22" r="19" stroke="rgba(20,22,28,0.25)" stroke-width="4"/><path d="M22 3a19 19 0 0119 19" stroke="#14161C" stroke-width="4" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+      </div>
+
+      <p class="orb-label" id="orbLabel">Start Call</p>
+
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <p class="hint" id="hint">Speak any time — you can interrupt NewsBuddy.</p>
+
+      <div class="transcript" id="transcript">
+        <div class="t-empty" id="tEmpty">Your conversation will appear here…</div>
+        <div class="entries" id="entries"></div>
+      </div>
+
+      <div class="error" id="error" role="alert"></div>
+
+      <button class="btn-end" id="endBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.62 10.79a15.53 15.53 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24 11.36 11.36 0 003.56.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.36 11.36 0 00.57 3.56 1 1 0 01-.24 1.02l-2.21 2.21z"/></svg>
+        End Call
+      </button>
+    </section>
+
+    <p class="footnote">Works right here in your browser — no app needed. Best with headphones in a quiet spot.</p>
+  </main>
+
+<script type="module">
+  // ---- Hardcoded Vapi credentials (public key is safe to expose client-side) ----
+  const PUBLIC_KEY  = "0c164656-ad48-4b9e-a31e-ecdaf18e133c";
+  const ASSISTANT_ID = "34592d2f-4cda-4585-b0a8-0e1bc34a662b";
+
+  // ---- Element handles ----
+  const dialer   = document.getElementById('dialer');
+  const orb      = document.getElementById('orb');
+  const orbPhone = document.getElementById('orbPhone');
+  const orbEq    = document.getElementById('orbEq');
+  const orbSpin  = document.getElementById('orbSpinner');
+  const orbLabel = document.getElementById('orbLabel');
+  const subtitle = document.getElementById('subtitle');
+  const statusEl = document.getElementById('status');
+  const hintEl   = document.getElementById('hint');
+  const transcriptEl = document.getElementById('transcript');
+  const entriesEl = document.getElementById('entries');
+  const tEmpty   = document.getElementById('tEmpty');
+  const errorEl  = document.getElementById('error');
+  const endBtn   = document.getElementById('endBtn');
+
+  const DEFAULT_SUBTITLE = subtitle.textContent;
+
+  let vapi = null;          // the Vapi instance, once the SDK loads
+  let assistantSpeaking = false;
+  const livePartials = {};  // role -> the in-progress <div class="bubble partial">
+
+  // ---------- Small DOM helpers ----------
+  const show = (el, display = 'flex') => { el.style.display = display; };
+  const hide = (el) => { el.style.display = 'none'; };
+
+  function setOrbVisual(which){ // 'phone' | 'eq' | 'spinner'
+    orbPhone.style.display = which === 'phone'   ? 'grid'  : 'none';
+    orbEq.style.display    = which === 'eq'      ? 'flex'  : 'none';
+    orbSpin.style.display  = which === 'spinner' ? 'block' : 'none';
+  }
+
+  // ---------- High-level UI states ----------
+  // 'loading' | 'idle' | 'connecting' | 'active' | 'ended' | 'error'
+  function setState(state, opts = {}){
+    dialer.classList.remove('live-idle', 'live-active', 'speaking');
+    hide(statusEl); hide(hintEl); hide(endBtn);
+    statusEl.removeAttribute('data-mode');
+
+    if (state === 'loading'){
+      setOrbVisual('phone');
+      orb.disabled = true;
+      orb.setAttribute('aria-label', 'Loading…');
+      orbLabel.textContent = 'Getting ready…';
+      show(orbLabel, 'block');
+      subtitle.textContent = DEFAULT_SUBTITLE;
+      hide(errorEl);
+    }
+
+    else if (state === 'idle'){
+      setOrbVisual('phone');
+      dialer.classList.add('live-idle');
+      orb.disabled = false;
+      orb.setAttribute('aria-label', 'Start call');
+      orbLabel.textContent = 'Start Call';
+      show(orbLabel, 'block');
+      subtitle.textContent = DEFAULT_SUBTITLE;
+      hide(errorEl);
+    }
+
+    else if (state === 'connecting'){
+      setOrbVisual('spinner');
+      orb.disabled = true;
+      orb.setAttribute('aria-label', 'Connecting…');
+      hide(orbLabel);
+      statusEl.setAttribute('data-mode', 'connecting');
+      statusEl.innerHTML = '<span class="spin" aria-hidden="true"></span> Connecting…';
+      show(statusEl);
+      hide(errorEl);
+    }
+
+    else if (state === 'active'){
+      setOrbVisual('eq');
+      dialer.classList.add('live-active');
+      orb.disabled = true;          // the orb is now a live indicator, not a button
+      orb.setAttribute('aria-label', 'Call in progress');
+      hide(orbLabel);
+      show(transcriptEl, 'block');
+      show(hintEl, 'block');
+      show(endBtn);
+      hide(errorEl);
+      renderStatus();
+    }
+
+    else if (state === 'ended'){
+      setOrbVisual('phone');
+      dialer.classList.add('live-idle');
+      orb.disabled = false;
+      orb.setAttribute('aria-label', 'Call again');
+      orbLabel.textContent = 'Call again';
+      show(orbLabel, 'block');
+      subtitle.textContent = 'Call ended. Tap to talk again.';
+    }
+
+    else if (state === 'error'){
+      setOrbVisual('phone');
+      dialer.classList.add('live-idle');
+      orb.disabled = false;
+      orb.setAttribute('aria-label', 'Try again');
+      orbLabel.textContent = 'Try Again';
+      show(orbLabel, 'block');
+      showError(opts.title || "Something went wrong", opts.message || "Please tap Try Again to start the call.");
+    }
+  }
+
+  function renderStatus(){
+    dialer.classList.toggle('speaking', assistantSpeaking);
+    statusEl.setAttribute('data-mode', assistantSpeaking ? 'speaking' : 'listening');
+    const label = assistantSpeaking ? 'NewsBuddy is speaking…' : 'Listening…';
+    statusEl.innerHTML =
+      '<span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>' +
+      '<span>' + label + '</span>';
+    show(statusEl);
+  }
+
+  function showError(title, message){
+    errorEl.innerHTML = '';
+    const b = document.createElement('b'); b.textContent = title;
+    const span = document.createElement('span'); span.textContent = message;
+    errorEl.append(b, span);
+    show(errorEl, 'block');
+  }
+
+  // ---------- Transcript rendering ----------
+  function clearTranscript(){
+    entriesEl.innerHTML = '';
+    for (const k in livePartials) delete livePartials[k];
+    show(tEmpty, 'block');
+  }
+
+  function makeBubble(role, text, partial){
+    const div = document.createElement('div');
+    div.className = 'bubble ' + (role === 'assistant' ? 'assistant' : 'user') + (partial ? ' partial' : '');
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.textContent = role === 'assistant' ? 'NewsBuddy' : 'You';
+    const t = document.createElement('span');
+    t.className = 'text';
+    t.textContent = text;
+    div.append(who, t);
+    return div;
+  }
+
+  function scrollTranscript(){ entriesEl.scrollTop = entriesEl.scrollHeight; }
+
+  function onTranscript(role, text, isFinal){
+    if (!text) return;
+    role = role === 'assistant' ? 'assistant' : 'user';
+    hide(tEmpty);
+
+    if (!isFinal){
+      // grow / create the in-progress bubble for this speaker
+      let bubble = livePartials[role];
+      if (!bubble){
+        bubble = makeBubble(role, text, true);
+        entriesEl.appendChild(bubble);
+        livePartials[role] = bubble;
+      } else {
+        bubble.querySelector('.text').textContent = text;
+      }
+    } else {
+      // settle the line: reuse the partial bubble if we have one
+      let bubble = livePartials[role];
+      if (bubble){
+        bubble.classList.remove('partial');
+        bubble.querySelector('.text').textContent = text;
+        delete livePartials[role];
+      } else {
+        entriesEl.appendChild(makeBubble(role, text, false));
+      }
+    }
+    scrollTranscript();
+  }
+
+  // ---------- Friendly, plain-English error messages ----------
+  function describeError(err){
+    const parts = [];
+    if (err){
+      if (typeof err === 'string') parts.push(err);
+      if (err.message) parts.push(err.message);
+      if (err.name) parts.push(err.name);
+      if (err.error && typeof err.error === 'string') parts.push(err.error);
+      if (err.errorMsg) parts.push(err.errorMsg);
+      if (err.msg) parts.push(err.msg);
+    }
+    const text = parts.join(' ').toLowerCase();
+
+    if (text.includes('permission') || text.includes('denied') || text.includes('notallowed') ||
+        text.includes('not allowed') || text.includes('microphone') || text.includes('notfound') ||
+        text.includes('audio')){
+      return {
+        title: "We can't hear you yet",
+        message: "NewsBuddy needs your microphone to talk with you. Please allow microphone access for this page (check the address bar or your browser settings), then tap Try Again."
+      };
+    }
+    if (text.includes('network') || text.includes('connect') || text.includes('offline') ||
+        text.includes('timeout') || text.includes('failed to fetch') || text.includes('load')){
+      return {
+        title: "Couldn't connect the call",
+        message: "Please check your internet connection and try again. If you're on mobile data, a stronger signal helps."
+      };
+    }
+    return {
+      title: "Something went wrong",
+      message: "The call couldn't start. Please tap Try Again — and if it keeps happening, reload the page."
+    };
+  }
+
+  function failWith(err){
+    console.error('[NewsBuddy call]', err);
+    const { title, message } = describeError(err);
+    setState('error', { title, message });
+  }
+
+  // ---------- Load the Vapi Web SDK (no build step) ----------
+  // @vapi-ai/web is an ES module that pulls in @daily-co/daily-js, so we import it
+  // from a CDN that resolves its dependencies. Try one, fall back to another.
+  async function loadVapi(){
+    const sources = [
+      "https://esm.sh/@vapi-ai/web@latest",
+      "https://cdn.jsdelivr.net/npm/@vapi-ai/web/+esm"
+    ];
+    let lastErr;
+    for (const src of sources){
+      try {
+        const mod = await import(src);
+        const Vapi = mod.default || mod.Vapi || mod;
+        if (typeof Vapi === 'function') return Vapi;
+        lastErr = new Error('Unexpected SDK shape from ' + src);
+      } catch (e){ lastErr = e; }
+    }
+    throw lastErr || new Error('Could not load the voice SDK');
+  }
+
+  function wireEvents(){
+    vapi.on('call-start', () => { setState('active'); });
+
+    vapi.on('call-end', () => {
+      // settle any dangling partials, then return to a "call again" state
+      for (const role in livePartials){
+        livePartials[role].classList.remove('partial');
+        delete livePartials[role];
+      }
+      assistantSpeaking = false;
+      setState('ended');
+    });
+
+    vapi.on('speech-start', () => { assistantSpeaking = true;  renderStatus(); });
+    vapi.on('speech-end',   () => { assistantSpeaking = false; renderStatus(); });
+
+    // gentle volume-reactive glow on the orb while connected
+    vapi.on('volume-level', (v) => {
+      const vol = Math.max(0, Math.min(1, Number(v) || 0));
+      orb.style.boxShadow =
+        `0 18px 44px -14px rgba(242,163,60,${0.55 + vol * 0.4}), ` +
+        `0 0 ${10 + vol * 34}px ${vol * 6}px rgba(242,163,60,${0.12 + vol * 0.28}), ` +
+        `inset 0 0 0 1px rgba(255,255,255,0.18)`;
+    });
+
+    vapi.on('message', (msg) => {
+      if (msg && msg.type === 'transcript' && msg.transcript){
+        onTranscript(msg.role, msg.transcript, msg.transcriptType === 'final');
+      }
+    });
+
+    vapi.on('error', (e) => { failWith(e); });
+  }
+
+  // ---------- Actions ----------
+  async function startCall(){
+    // A live mic needs a secure context (https) or localhost — fail kindly otherwise.
+    if (!window.isSecureContext || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
+      setState('error', {
+        title: "This page needs a secure connection",
+        message: "Voice calls only work over a secure (https) link. Please open this page using its https address and try again."
+      });
+      return;
+    }
+    if (!vapi){
+      setState('error', {
+        title: "Still getting ready",
+        message: "The voice service is still loading. Please wait a moment and tap Try Again."
+      });
+      return;
+    }
+
+    clearTranscript();
+    hide(errorEl);
+    setState('connecting');
+    try {
+      await vapi.start(ASSISTANT_ID);
+      // call-start event will flip us to the 'active' state
+    } catch (err){
+      failWith(err);
+    }
+  }
+
+  function endCall(){
+    try { vapi && vapi.stop(); }
+    catch (e){ console.error('[NewsBuddy call] stop failed', e); }
+    // call-end event handles the UI; nudge it in case stop() is silent
+    assistantSpeaking = false;
+    setState('ended');
+  }
+
+  orb.addEventListener('click', () => { if (!orb.disabled) startCall(); });
+  endBtn.addEventListener('click', endCall);
+
+  // ---------- Boot ----------
+  setState('loading');
+  loadVapi()
+    .then((Vapi) => {
+      vapi = new Vapi(PUBLIC_KEY);
+      wireEvents();
+      setState('idle');
+    })
+    .catch((err) => {
+      console.error('[NewsBuddy call] SDK load failed', err);
+      setState('error', {
+        title: "Couldn't load the voice service",
+        message: "Please check your internet connection and reload the page. If you're behind a strict network, it may be blocking the call service."
+      });
+    });
+</script>
+</body>
+</html>

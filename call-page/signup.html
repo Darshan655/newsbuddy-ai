@@ -1,0 +1,809 @@
+<!--
+  ⚠️  INTERNAL TESTING ONLY — NOT FOR PUBLIC RELEASE
+  ====================================================
+  This page has NO real phone number verification. Anyone who submits a
+  number will be immediately added to the active user list and will start
+  receiving WhatsApp messages without the recipient's explicit consent.
+
+  The password field is a client-side speed bump only — anyone who reads
+  this source file can trivially bypass it. It exists purely to prevent
+  accidental use if a stray link leaks, not to stop a determined actor.
+
+  Before making this page (or any signup page) publicly accessible:
+    □ Add a WhatsApp challenge/response verification step
+      (send a code to the submitted number; require them to confirm it)
+    □ Add rate limiting on POST /api/users/ (e.g. slowapi)
+    □ Restrict CORS origins in backend/app/main.py (currently allow_origins=["*"])
+    □ Remove or replace the password gate with real auth
+    □ Add <meta name="robots" content="noindex, nofollow"> if not already present
+
+  The real verification flow is intentionally deferred. This page exists
+  only to onboard internal testers we know personally.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<title>NewsBuddy — Tester Sign-up</title>
+<meta name="theme-color" content="#14161C" />
+
+<!-- Favicon: small rising sun (same as marketing site + call page) -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314161C'/%3E%3Ccircle cx='16' cy='21' r='6' fill='%23F2A33C'/%3E%3Cg stroke='%23F2A33C' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='16' y1='6' x2='16' y2='9'/%3E%3Cline x1='6' y1='12' x2='8' y2='13.5'/%3E%3Cline x1='26' y1='12' x2='24' y2='13.5'/%3E%3C/g%3E%3Cline x1='4' y1='27' x2='28' y2='27' stroke='%236FA287' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+<!-- Fonts: Fraunces (serif headlines) + Hind (Latin + Devanagari) — matching site -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Hind:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+  /* ── Palette & tokens — identical to marketing-site/index.html and call-page/index.html ── */
+  :root {
+    --bg:          #14161C;   /* pre-dawn sky */
+    --bg-soft:     #1B1E27;
+    --surface:     rgba(246,241,231,0.045);
+    --surface-2:   rgba(246,241,231,0.07);
+    --cream:       #F6F1E7;   /* warm light */
+    --cream-dim:   rgba(246,241,231,0.74);
+    --cream-faint: rgba(246,241,231,0.52);
+    --marigold:    #F2A33C;   /* first light */
+    --marigold-ink:#14161C;
+    --marigold-soft:rgba(242,163,60,0.14);
+    --sage:        #6FA287;   /* verified / success */
+    --sage-soft:   rgba(111,162,135,0.16);
+    --terracotta:  #D6603F;   /* error / breaking */
+    --terracotta-soft:rgba(214,96,63,0.16);
+    --line:        rgba(246,241,231,0.10);
+    --line-soft:   rgba(246,241,231,0.06);
+
+    --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --sans:  'Hind', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+    --radius:    18px;
+    --radius-lg: 26px;
+  }
+
+  /* ── Reset / base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--cream);
+    line-height: 1.6;
+    font-size: clamp(15px, 1rem + 0.1vw, 17px);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+    min-height: 100svh;
+    overflow-x: hidden;
+  }
+  img, svg { display: block; max-width: 100%; }
+  button, input, select, textarea { font-family: inherit; }
+
+  /* warm glow + subtle grain — same recipe as the call page */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(125% 80% at 50% 120%, rgba(242,163,60,0.22), rgba(214,96,63,0.07) 36%, transparent 62%),
+      radial-gradient(80% 50% at 82% -12%, rgba(111,162,135,0.09), transparent 60%);
+  }
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.04; mix-blend-mode: overlay;
+  }
+
+  ::selection { background: var(--marigold); color: var(--marigold-ink); }
+  :focus-visible { outline: 2.5px solid var(--marigold); outline-offset: 3px; border-radius: 10px; }
+
+  /* ── Stage & card ── */
+  .stage {
+    position: relative; z-index: 1;
+    min-height: 100vh; min-height: 100svh; min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    padding: max(32px, env(safe-area-inset-top)) 18px max(36px, env(safe-area-inset-bottom));
+    gap: 16px;
+  }
+  .card {
+    width: min(100%, 520px);
+    background:
+      radial-gradient(120% 80% at 50% -10%, rgba(242,163,60,0.06), transparent 55%),
+      var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: clamp(24px, 4vw, 38px) clamp(20px, 4.5vw, 36px) clamp(28px, 4.5vw, 40px);
+    box-shadow: 0 40px 90px -40px rgba(0,0,0,0.8);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+
+  /* ── Brand lockup ── */
+  .brand {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-weight: 600; font-size: 0.97rem; color: var(--cream-dim);
+    margin-bottom: 16px;
+  }
+  .brand .logo { width: 28px; height: 28px; flex: none; }
+  .brand b { font-weight: 700; color: var(--cream); }
+
+  /* ── Card header ── */
+  .card-title {
+    font-family: var(--serif); font-optical-sizing: auto;
+    font-variation-settings: 'opsz' 110, 'wght' 520;
+    font-size: clamp(1.7rem, 1.1rem + 2.4vw, 2.4rem);
+    line-height: 1.07; letter-spacing: -0.015em;
+    margin-bottom: 6px;
+  }
+  .card-title em {
+    font-style: italic; color: var(--marigold);
+    font-variation-settings: 'opsz' 110, 'wght' 470;
+  }
+  .card-subtitle {
+    color: var(--cream-dim); font-size: 0.95rem;
+    margin-bottom: 22px;
+  }
+
+  /* ── Internal-testing banner ── */
+  /* Visible to anyone who opens the page — deliberately prominent so it
+     can't be missed if the URL leaks to the wrong audience. The note that
+     the password is "not real auth" is intentional and required. */
+  .gate-banner {
+    background: rgba(242,163,60,0.09);
+    border: 1px solid rgba(242,163,60,0.30);
+    border-radius: 14px;
+    padding: 13px 16px;
+    margin-bottom: 22px;
+    font-size: 0.875rem;
+    line-height: 1.52;
+    color: var(--cream-dim);
+  }
+  .gate-banner .banner-label {
+    display: flex; align-items: center; gap: 7px;
+    color: var(--marigold);
+    font-weight: 700; font-size: 0.78rem;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .gate-banner .banner-label svg { width: 14px; height: 14px; flex: none; }
+  .gate-banner p { margin: 0; }
+  .gate-banner p + p { margin-top: 4px; }
+
+  /* ── Form layout ── */
+  .field {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 16px;
+  }
+  label {
+    font-size: 0.875rem; font-weight: 600;
+    color: var(--cream-dim); letter-spacing: 0.02em;
+  }
+  .optional { font-weight: 400; color: var(--cream-faint); font-size: 0.8rem; }
+  .field-hint { font-size: 0.8rem; color: var(--cream-faint); line-height: 1.4; }
+
+  input[type="text"],
+  input[type="tel"],
+  input[type="password"],
+  input[type="time"],
+  select {
+    width: 100%;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 11px 14px;
+    color: var(--cream);
+    font-size: 1rem; line-height: 1.4;
+    appearance: none; -webkit-appearance: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  input[type="text"]:focus,
+  input[type="tel"]:focus,
+  input[type="password"]:focus,
+  input[type="time"]:focus,
+  select:focus {
+    border-color: rgba(242,163,60,0.55);
+    box-shadow: 0 0 0 3px rgba(242,163,60,0.11);
+    outline: none;
+  }
+  /* Time input: suppress the browser's native light-theme icon colour */
+  input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+  input::placeholder { color: var(--cream-faint); }
+  /* Dark select arrow */
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(246,241,231,0.5)' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 38px;
+    cursor: pointer;
+  }
+  select option { background: #1B1E27; color: var(--cream); }
+
+  /* Gate password field: amber border tint to visually tie it to the banner */
+  .gate-field input { border-color: rgba(242,163,60,0.22); }
+  .gate-field input:focus { border-color: rgba(242,163,60,0.55); }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px; background: var(--line);
+    margin: 18px 0 20px;
+  }
+  .divider-label {
+    display: flex; align-items: center; gap: 10px;
+    margin: 18px 0 20px; color: var(--cream-faint); font-size: 0.78rem;
+    letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .divider-label::before, .divider-label::after {
+    content: ""; flex: 1; height: 1px; background: var(--line);
+  }
+
+  /* ── Topics checkboxes ── */
+  fieldset.field {
+    border: none;
+    margin-bottom: 20px;
+  }
+  fieldset.field legend {
+    font-size: 0.875rem; font-weight: 600;
+    color: var(--cream-dim); letter-spacing: 0.02em;
+    margin-bottom: 10px;
+    display: block; width: 100%;
+  }
+  .topics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 10px;
+  }
+  @media (max-width: 360px) { .topics-grid { grid-template-columns: 1fr; } }
+
+  .topic-label {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 0.9rem; color: var(--cream-dim);
+    cursor: pointer;
+    padding: 9px 12px;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    transition: border-color .15s, background .15s, color .15s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .topic-label:hover { border-color: rgba(242,163,60,0.30); }
+  .topic-label input[type="checkbox"] {
+    width: 15px; height: 15px; flex: none;
+    accent-color: var(--marigold); cursor: pointer;
+  }
+  /* highlight selected topic pill — :has() is supported in all modern browsers */
+  .topic-label:has(input:checked) {
+    border-color: rgba(242,163,60,0.45);
+    background: var(--marigold-soft);
+    color: var(--cream);
+  }
+
+  /* ── Submit button ── */
+  .btn-submit {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    width: 100%; margin-top: 6px;
+    padding: 14px 20px;
+    border: none; border-radius: 999px;
+    background: var(--marigold);
+    color: var(--marigold-ink);
+    font-size: 1.02rem; font-weight: 700; letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 12px 32px -12px rgba(242,163,60,0.65);
+    transition: transform .17s ease, box-shadow .17s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px -14px rgba(242,163,60,0.8);
+  }
+  .btn-submit:active:not(:disabled) { transform: translateY(0) scale(0.99); }
+  .btn-submit:disabled { opacity: 0.52; cursor: not-allowed; }
+
+  .btn-spinner {
+    display: none;
+    width: 18px; height: 18px; flex: none; border-radius: 50%;
+    border: 2.5px solid rgba(20,22,28,0.25); border-top-color: #14161C;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Inline form error ── */
+  .form-error {
+    display: none;
+    background: var(--terracotta-soft);
+    border: 1px solid rgba(214,96,63,0.30);
+    border-radius: 12px;
+    padding: 11px 14px;
+    font-size: 0.92rem; color: var(--cream); line-height: 1.5;
+    margin-top: 14px;
+  }
+  .form-error b { display: block; color: var(--terracotta); font-size: 0.84rem; margin-bottom: 2px; }
+
+  /* ── Success state ── */
+  .success-card { display: none; }
+
+  .success-icon {
+    width: 64px; height: 64px; margin: 0 auto 20px;
+    background: var(--sage-soft);
+    border: 1px solid rgba(111,162,135,0.28);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .success-icon svg { width: 28px; height: 28px; color: var(--sage); }
+
+  .success-title {
+    font-family: var(--serif); font-optical-sizing: auto;
+    font-variation-settings: 'opsz' 80, 'wght' 500;
+    font-size: clamp(1.45rem, 1.1rem + 1.5vw, 2rem);
+    line-height: 1.1; letter-spacing: -0.01em;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .success-name { color: var(--sage); }
+  .success-sub {
+    color: var(--cream-dim); font-size: 0.95rem;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  /* Next-step cards */
+  .steps { display: flex; flex-direction: column; gap: 12px; }
+  .step {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .step-num {
+    flex: none; width: 26px; height: 26px;
+    background: var(--marigold); color: var(--marigold-ink);
+    border-radius: 50%;
+    font-weight: 700; font-size: 0.8rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-body { flex: 1; min-width: 0; }
+  .step-body p { font-size: 0.92rem; color: var(--cream-dim); line-height: 1.5; margin: 0; }
+  .step-body p + p { margin-top: 6px; }
+  .step-body strong { color: var(--cream); font-weight: 600; }
+  .step-code {
+    display: inline-block;
+    background: rgba(242,163,60,0.12);
+    border: 1px solid rgba(242,163,60,0.26);
+    border-radius: 7px;
+    padding: 3px 9px;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 0.88rem;
+    color: var(--marigold);
+    word-break: break-all;
+    margin-top: 6px;
+  }
+  .step-note {
+    margin-top: 6px !important;
+    font-size: 0.8rem !important;
+    color: var(--cream-faint) !important;
+  }
+
+  /* Step 1 primary action: deep-link into WhatsApp with the join message
+     pre-filled. Marigold pill to match the form's main submit button. */
+  .wa-button {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    width: 100%;
+    margin: 12px 0 14px;
+    padding: 12px 18px;
+    border: none; border-radius: 999px;
+    background: var(--marigold);
+    color: var(--marigold-ink);
+    font-family: var(--sans);
+    font-size: 1rem; font-weight: 700; letter-spacing: 0.01em;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 10px 26px -12px rgba(242,163,60,0.6);
+    transition: transform .17s ease, box-shadow .17s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wa-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 34px -14px rgba(242,163,60,0.78);
+  }
+  .wa-button:active { transform: translateY(0) scale(0.99); }
+  .wa-button svg { width: 20px; height: 20px; flex: none; }
+
+  /* Fallback line beneath the button, for browsers / in-app webviews where
+     wa.me deep-links are unreliable. Keeps the manual instructions visible. */
+  .step-fallback {
+    margin-top: 4px !important;
+    font-size: 0.85rem !important;
+    color: var(--cream-dim) !important;
+  }
+
+  /* ── Footnote ── */
+  .footnote {
+    position: relative; z-index: 1;
+    color: var(--cream-faint); font-size: 0.8rem;
+    text-align: center; max-width: 44ch;
+  }
+</style>
+</head>
+<body>
+
+<main class="stage">
+  <section class="card" aria-labelledby="cardTitle">
+
+    <!-- Brand -->
+    <span class="brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="#1B1E27"/>
+        <circle cx="16" cy="21" r="6" fill="#F2A33C"/>
+        <g stroke="#F2A33C" stroke-width="2" stroke-linecap="round">
+          <line x1="16" y1="6" x2="16" y2="9"/>
+          <line x1="6" y1="12" x2="8" y2="13.5"/>
+          <line x1="26" y1="12" x2="24" y2="13.5"/>
+        </g>
+        <line x1="5" y1="27" x2="27" y2="27" stroke="#6FA287" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span>News<b>Buddy</b> AI</span>
+    </span>
+
+    <!-- ── Form view ── -->
+    <div id="formView">
+      <h1 id="cardTitle" class="card-title">Sign up for <em>NewsBuddy</em></h1>
+      <p class="card-subtitle">Internal tester registration — voice news updates on WhatsApp.</p>
+
+      <!-- Testing gate banner — intentionally visible, not just a code comment -->
+      <div class="gate-banner" role="note">
+        <div class="banner-label">
+          <!-- warning triangle -->
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M8 1.5L1 14h14L8 1.5zM8 5.5v4M8 11h.01" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+          </svg>
+          Internal testing only — not for public use
+        </div>
+        <p>This page is not publicly linked or indexed. The password below is a <strong>client-side speed bump only</strong> — it prevents accidental use of a leaked link, but it is not real authentication. Anyone who reads the page source can bypass it.</p>
+        <p style="margin-top:6px;">If you received this link by mistake, please close this tab. This form is for invited NewsBuddy testers only.</p>
+      </div>
+
+      <form id="signupForm" novalidate>
+
+        <!-- ── Testing gate ── -->
+        <div class="field gate-field">
+          <label for="gatePass">Testing password</label>
+          <input type="password" id="gatePass" name="gatePass" required
+                 placeholder="Enter the shared testing password"
+                 autocomplete="off" spellcheck="false" />
+        </div>
+
+        <div class="divider-label">your details</div>
+
+        <!-- ── User details ── -->
+        <div class="field">
+          <label for="name">Full name</label>
+          <input type="text" id="name" name="name" required
+                 placeholder="Rajesh Kumar" autocomplete="name" />
+        </div>
+
+        <div class="field">
+          <label for="phone">WhatsApp number</label>
+          <input type="tel" id="phone" name="phone" required
+                 placeholder="+91 98765 43210" autocomplete="tel" />
+          <span class="field-hint">Include the country code — +91 for India, +977 for Nepal</span>
+        </div>
+
+        <div class="field">
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" required
+                 placeholder="Gorakhpur" autocomplete="address-level2" />
+        </div>
+
+        <div class="field">
+          <label for="state">State / Province <span class="optional">(optional)</span></label>
+          <input type="text" id="state" name="state"
+                 placeholder="Uttar Pradesh" autocomplete="address-level1" />
+        </div>
+
+        <div class="field">
+          <label for="language">Language</label>
+          <select id="language" name="language">
+            <option value="hi">Hindi</option>
+            <option value="ne">Nepali</option>
+            <option value="en">English</option>
+          </select>
+          <span class="field-hint">Hindi and Nepali templates are coming soon — English will be used in the meantime.</span>
+        </div>
+
+        <div class="field">
+          <label for="callTime">Daily briefing time</label>
+          <input type="time" id="callTime" name="callTime" value="07:00" />
+          <span class="field-hint">When to receive your morning news update (IST / NPT)</span>
+        </div>
+
+        <fieldset class="field" aria-describedby="topicsHint">
+          <legend>Topics <span class="optional">(optional — leave blank for all local news)</span></legend>
+          <div class="topics-grid" id="topicsHint">
+            <label class="topic-label"><input type="checkbox" value="local" /> Local</label>
+            <label class="topic-label"><input type="checkbox" value="national" /> National</label>
+            <label class="topic-label"><input type="checkbox" value="crime" /> Crime</label>
+            <label class="topic-label"><input type="checkbox" value="accident" /> Accidents</label>
+            <label class="topic-label"><input type="checkbox" value="market_prices" /> Market prices</label>
+            <label class="topic-label"><input type="checkbox" value="weather" /> Weather</label>
+            <label class="topic-label"><input type="checkbox" value="government" /> Government</label>
+            <label class="topic-label"><input type="checkbox" value="transport" /> Transport</label>
+            <label class="topic-label"><input type="checkbox" value="real_estate" /> Real estate</label>
+            <label class="topic-label"><input type="checkbox" value="business" /> Business</label>
+          </div>
+        </fieldset>
+
+        <!-- Inline error -->
+        <div class="form-error" id="formError" role="alert">
+          <b id="errorTitle"></b><span id="errorMsg"></span>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <span class="btn-spinner" id="btnSpinner" aria-hidden="true"></span>
+          <span id="btnLabel">Sign me up</span>
+        </button>
+
+      </form>
+    </div>
+
+    <!-- ── Success view (hidden until form submits successfully) ── -->
+    <div class="success-card" id="successCard" aria-live="polite">
+      <div class="success-icon" aria-hidden="true">
+        <!-- checkmark -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+
+      <h2 class="success-title">You're in, <span class="success-name" id="successName">friend</span>!</h2>
+      <p class="success-sub">Two quick steps to activate your WhatsApp delivery:</p>
+
+      <div class="steps">
+        <!-- Step 1: join the Twilio sandbox -->
+        <div class="step">
+          <div class="step-num" aria-hidden="true">1</div>
+          <div class="step-body">
+            <p><strong>Join the WhatsApp sandbox</strong></p>
+            <p>Tap the button to open WhatsApp with the join message ready — just hit send.</p>
+
+            <!--
+              Primary action: deep-links into WhatsApp with "join <phrase>" pre-filled.
+              The href AND the fallback message below are populated by JS from the
+              SANDBOX_PHRASE constant in the script block, so the join phrase lives in
+              exactly one place. To rotate the sandbox phrase, edit SANDBOX_PHRASE only.
+            -->
+            <a class="wa-button" id="waJoinBtn" href="#" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M17.5 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.95 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2-1.41.25-.69.25-1.28.17-1.41-.07-.13-.27-.2-.57-.35z M12 2.04c-5.5 0-9.96 4.46-9.96 9.96 0 1.76.46 3.48 1.34 5L2 22l5.1-1.34c1.46.8 3.1 1.22 4.78 1.22h.01c5.5 0 9.96-4.46 9.96-9.96 0-2.66-1.04-5.16-2.92-7.04A9.9 9.9 0 0012 2.04zm0 18.13h-.01c-1.5 0-2.96-.4-4.24-1.16l-.3-.18-3.15.83.84-3.07-.2-.32a8.27 8.27 0 01-1.27-4.4c0-4.57 3.72-8.29 8.3-8.29 2.21 0 4.29.86 5.85 2.43a8.23 8.23 0 012.42 5.87c0 4.57-3.72 8.29-8.29 8.29z"/>
+              </svg>
+              Join on WhatsApp
+            </a>
+
+            <p class="step-fallback">Button didn't open WhatsApp? Send <code class="step-code" id="waJoinCode">join …</code> manually to <strong>+1&nbsp;415&nbsp;523&nbsp;8886</strong>.</p>
+            <p class="step-note">Sandbox sessions expire after ~3 days — re-send if updates stop arriving.</p>
+          </div>
+        </div>
+
+        <!-- Step 2: trigger first update -->
+        <div class="step">
+          <div class="step-num" aria-hidden="true">2</div>
+          <div class="step-body">
+            <p><strong>Get your first news update</strong></p>
+            <p>Once joined, reply <strong>CALL NOW</strong> to that same number. You'll receive a voice note with today's local news within about 30 seconds.</p>
+            <p class="step-note">Or just wait — your daily briefing will arrive automatically at the time you chose.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <p class="footnote">Internal testing · Not publicly accessible · NewsBuddy AI</p>
+</main>
+
+<script>
+  // ── Configuration ─────────────────────────────────────────────────────────────
+  //
+  // BACKEND_URL: update this every time ngrok restarts, or set it to the
+  // deployed backend URL for production. No trailing slash.
+  //   e.g. "https://raking-tiger-detest.ngrok-free.app"
+  //        "https://api.newsbuddy.ai"
+  //
+  const BACKEND_URL = "https://raking-tiger-detest.ngrok-free.dev";
+
+  // ⚠️ WEAK CLIENT-SIDE GATE — plaintext, trivially bypassable by reading
+  // the source. Purpose: prevent casual misuse of an accidentally shared
+  // link. Do NOT use a real password here. Change it to something you'll
+  // share with testers verbally or via Signal, never in writing.
+  const GATE_PASSWORD = "nb-test-2026";
+
+  // ── Twilio WhatsApp sandbox (success screen, step 1) ──────────────────────────
+  // SANDBOX_PHRASE is the single source of truth for the join phrase. It feeds both
+  // the "Join on WhatsApp" deep-link button and the fallback text beneath it, so the
+  // phrase never has to be kept in sync by hand. If the sandbox is reset, change
+  // SANDBOX_PHRASE here (from Twilio Console → Messaging → WhatsApp sandbox).
+  const SANDBOX_NUMBER = "14155238886";   // digits only — no +, spaces, or dashes (wa.me spec)
+  const SANDBOX_PHRASE = "divide-wild";    // the rotating join phrase
+
+  // ── Element references ────────────────────────────────────────────────────────
+  const form        = document.getElementById('signupForm');
+  const formView    = document.getElementById('formView');
+  const successCard = document.getElementById('successCard');
+  const successName = document.getElementById('successName');
+  const submitBtn   = document.getElementById('submitBtn');
+  const btnSpinner  = document.getElementById('btnSpinner');
+  const btnLabel    = document.getElementById('btnLabel');
+  const formError   = document.getElementById('formError');
+  const errorTitle  = document.getElementById('errorTitle');
+  const errorMsg    = document.getElementById('errorMsg');
+  const waJoinBtn   = document.getElementById('waJoinBtn');
+  const waJoinCode  = document.getElementById('waJoinCode');
+
+  // ── Build the WhatsApp join deep-link from the single SANDBOX_PHRASE constant ──
+  // encodeURIComponent turns "join divide-wild" into "join%20divide-wild" (the space
+  // becomes %20; the hyphen is an unreserved char and is left as-is) — matching the
+  // documented wa.me format: https://wa.me/<number>?text=<url-encoded message>.
+  // The same message also fills the fallback <code> so the two never diverge.
+  const sandboxJoinMessage = `join ${SANDBOX_PHRASE}`;
+  waJoinBtn.href = `https://wa.me/${SANDBOX_NUMBER}?text=${encodeURIComponent(sandboxJoinMessage)}`;
+  waJoinCode.textContent = sandboxJoinMessage;
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+  function setLoading(on) {
+    submitBtn.disabled = on;
+    btnSpinner.style.display = on ? 'block' : 'none';
+    btnLabel.textContent = on ? 'Signing up…' : 'Sign me up';
+  }
+
+  function showError(title, message) {
+    errorTitle.textContent = title;
+    errorMsg.textContent = ' ' + message;
+    formError.style.display = 'block';
+    formError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function hideError() { formError.style.display = 'none'; }
+
+  // Strip spaces/dashes for normalisation; preserve leading +
+  function normalizePhone(raw) {
+    return raw.trim().replace(/[\s\-() ]/g, '');
+  }
+
+  // Best-effort country inference from dialling prefix
+  function inferCountry(e164) {
+    if (e164.startsWith('+977')) return 'NP';
+    if (e164.startsWith('+91'))  return 'IN';
+    return 'IN';
+  }
+
+  // ── Form submission ───────────────────────────────────────────────────────────
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideError();
+
+    // ── Gate check ──
+    const gatePass = document.getElementById('gatePass').value;
+    if (gatePass !== GATE_PASSWORD) {
+      showError("Wrong testing password", "Check with the team for the current password.");
+      document.getElementById('gatePass').focus();
+      return;
+    }
+
+    // ── Config guard ──
+    if (!BACKEND_URL || BACKEND_URL === 'REPLACE_WITH_BACKEND_URL') {
+      showError(
+        "Page not configured",
+        "BACKEND_URL is still the placeholder. Edit signup.html and set it to the running backend URL, then reload."
+      );
+      return;
+    }
+
+    // ── Field values ──
+    const name     = document.getElementById('name').value.trim();
+    const phone    = normalizePhone(document.getElementById('phone').value);
+    const city     = document.getElementById('city').value.trim();
+    const state    = document.getElementById('state').value.trim();
+    const language = document.getElementById('language').value;
+    const callTime = document.getElementById('callTime').value || '07:00';
+    const topics   = Array.from(
+      document.querySelectorAll('.topics-grid input[type="checkbox"]:checked')
+    ).map(cb => cb.value);
+
+    // ── Client-side validation ──
+    if (!name) {
+      showError("Name required", "Please enter your full name.");
+      document.getElementById('name').focus();
+      return;
+    }
+    if (!phone || !phone.startsWith('+')) {
+      showError(
+        "Invalid phone number",
+        "Enter your WhatsApp number with the country code, e.g. +91 98765 43210 or +977 98XXXXXXXX."
+      );
+      document.getElementById('phone').focus();
+      return;
+    }
+    if (!city) {
+      showError("City required", "Please enter your city.");
+      document.getElementById('city').focus();
+      return;
+    }
+
+    // ── POST to /api/users/ ──
+    const payload = {
+      phone_number:        phone,
+      name,
+      city,
+      country:             inferCountry(phone),
+      language,
+      preferred_call_time: callTime,
+      topics,
+      ...(state && { state }),
+    };
+
+    setLoading(true);
+    try {
+      const apiUrl = BACKEND_URL.replace(/\/$/, '') + '/api/users/';
+      const res = await fetch(apiUrl, {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // ngrok-free serves an HTML interstitial warning page to browser
+          // requests instead of proxying them, which would make this POST
+          // fail (the form would get warning HTML, not a 201). This header
+          // tells ngrok to skip that page. Harmless to send to a non-ngrok
+          // backend — it's just an unknown header the server ignores.
+          // Remove once the backend moves off ngrok-free to a real host.
+          'ngrok-skip-browser-warning': 'true',
+        },
+        body:    JSON.stringify(payload),
+      });
+
+      if (res.status === 201) {
+        // Show success panel
+        successName.textContent = name.split(/\s+/)[0];  // first name only
+        formView.style.display    = 'none';
+        successCard.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      } else if (res.status === 409) {
+        showError(
+          "Already registered",
+          "This WhatsApp number is already signed up. If you need to update your details, ask Darshan directly."
+        );
+
+      } else if (res.status === 422) {
+        // Pydantic validation error — surface the first field error
+        const data = await res.json().catch(() => ({}));
+        const detail = data.detail;
+        let msg = `Server returned ${res.status}`;
+        if (Array.isArray(detail) && detail[0]?.msg) {
+          msg = detail[0].msg + (detail[0].loc ? ` (${detail[0].loc.slice(1).join(' → ')})` : '');
+        } else if (typeof detail === 'string') {
+          msg = detail;
+        }
+        showError("Validation error", msg);
+
+      } else {
+        const data = await res.json().catch(() => ({}));
+        const detail = typeof data.detail === 'string' ? data.detail : `HTTP ${res.status}`;
+        showError("Sign-up failed", detail);
+      }
+
+    } catch (err) {
+      const isOffline = !navigator.onLine || err.message?.toLowerCase().includes('failed to fetch');
+      showError(
+        isOffline ? "No connection" : "Couldn't reach the server",
+        isOffline
+          ? "Check your internet connection and try again."
+          : "Make sure the backend is running and BACKEND_URL in signup.html is the current ngrok URL."
+      );
+    } finally {
+      setLoading(false);
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime, timedelta
 
-from app.models.database import get_db, User, CallLog, RescheduleRequest as RescheduleModel
+from app.models.database import get_db, User, CallLog, NewsItem, RescheduleRequest as RescheduleModel
 from app.models.schemas import CallScheduleRequest, RescheduleRequest, CallLogResponse
+from app.services.openai_service import generate_script
+from app.services.vapi_service import build_assistant_config
 from app.tasks.tasks import dispatch_call_now
 
 router = APIRouter()
@@ -193,3 +196,48 @@ def schedule_daily_calls(db: Session = Depends(get_db)):
 
     db.commit()
     return {"scheduled": scheduled, "skipped": skipped, "total_users": len(active_users)}
+
+
+# ── Web SDK ────────────────────────────────────────────────────────────────────
+
+class WebAssistantRequest(BaseModel):
+    city: str
+    language: str = Field(default="en", pattern="^(hi|ne|en)$")
+    topics: List[str] = []
+    user_name: str = "Friend"
+
+
+class WebAssistantResponse(BaseModel):
+    assistant: Any  # shape is validated by VAPI on receipt
+
+
+@router.post("/web-assistant", response_model=WebAssistantResponse)
+def get_web_assistant(body: WebAssistantRequest, db: Session = Depends(get_db)):
+    """
+    Return a VAPI inline-assistant config for a browser-based voice call.
+
+    The caller passes the returned `assistant` object directly to
+    `vapi.start(assistantConfig)` — no phoneNumberId or customer fields
+    are included because this is not an outbound phone call.
+    """
+    news_items = (
+        db.query(NewsItem)
+        .filter(
+            NewsItem.is_active == True,
+            NewsItem.city.ilike(f"%{body.city}%"),
+        )
+        .order_by(NewsItem.importance_score.desc(), NewsItem.created_at.desc())
+        .limit(5)
+        .all()
+    )
+
+    # generate_script handles empty news_items with a graceful fallback script
+    script = generate_script(
+        news_items=news_items,
+        user_name=body.user_name,
+        city=body.city,
+        language=body.language,
+        topics=body.topics,
+    )
+
+    return {"assistant": build_assistant_config(script, body.user_name, body.language)}

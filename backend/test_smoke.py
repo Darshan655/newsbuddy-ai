@@ -34,7 +34,7 @@ def test_imports():
     from app.services.openai_service import _format_news_items, _fallback_script
     print("  ✅ openai_service")
 
-    from app.services.vapi_service import _build_system_prompt, _get_voice_config
+    from app.services.vapi_service import build_system_prompt, get_voice_config
     print("  ✅ vapi_service")
 
     from app.services.whatsapp_service import send_message

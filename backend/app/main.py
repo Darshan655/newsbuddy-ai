@@ -12,9 +12,10 @@ for _stream in (sys.stdout, sys.stderr):
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
-from app.core.config import settings
+from app.core.config import settings, VOICENOTES_DIR
 from app.models.database import create_tables
 from app.api import users, news, calls, admin, webhooks
 
@@ -51,6 +52,12 @@ app.include_router(news.router, prefix="/api/news", tags=["News"])
 app.include_router(calls.router, prefix="/api/calls", tags=["Calls"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
+
+# Serve generated voice notes over HTTP at /voicenotes/<file>.mp3. The directory
+# must exist before mounting; we anchor it to settings.MEDIA_DIR (not the CWD) so
+# it matches exactly where generate_voice_note writes the .mp3 files.
+VOICENOTES_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/voicenotes", StaticFiles(directory=str(VOICENOTES_DIR)), name="voicenotes")
 
 
 @app.get("/")

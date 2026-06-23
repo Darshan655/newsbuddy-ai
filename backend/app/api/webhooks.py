@@ -125,12 +125,30 @@ async def whatsapp_webhook(
         reply = "✅ You've been unsubscribed. Reply START to resume anytime."
         return _twilio_twiml_response(reply)
 
-    # ── CALL NOW ──────────────────────────────────────────────────────────────
+    # ── CALL NOW → on-demand WhatsApp voice note ───────────────────────────────
     if message.upper() in ("CALL NOW", "CALL", "CALL ME") and user:
-        call = CallLog(user_id=user.id, scheduled_at=datetime.utcnow(), status="scheduled")
+        # Create the CallLog already claimed ('in_progress', not 'scheduled') so
+        # the VAPI phone-call sweeper (process_pending_calls) never dials it —
+        # CALL NOW is now voice-note delivery, owned by send_voice_note_now.
+        call = CallLog(user_id=user.id, scheduled_at=datetime.utcnow(), status="in_progress")
         db.add(call)
         db.commit()
-        reply = f"📞 Calling you in 1-2 minutes, {user.name}!"
+
+        try:
+            from app.tasks.tasks import send_voice_note_now
+            send_voice_note_now.delay(call.id)
+            reply = (
+                f"✅ Got it, {user.name}! Generating your news now — "
+                f"it'll arrive as a voice note in a moment."
+            )
+        except Exception as e:
+            # Broker down / enqueue failed: don't leave a false ack or a stuck row.
+            call.status = "failed"
+            call.error_message = f"Failed to enqueue voice-note task: {e}"
+            db.commit()
+            print(f"[Webhook] CALL NOW enqueue failed for user {user.id}: {e}")
+            reply = "😕 Sorry, I'm having trouble right now — please try again in a moment."
+
         return _twilio_twiml_response(reply)
 
     # ── Default ────────────────────────────────────────────────────────────────

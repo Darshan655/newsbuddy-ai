@@ -5,3 +5,11 @@ venv/
 .venv/
 *.egg-info/
 .pytest_cache/
+
+# Generated audio (TTS voice notes, test output)
+*.mp3
+
+# Throwaway one-off manual test script
+test_send_voicenote.py
+# Local Netlify folder
+.netlify

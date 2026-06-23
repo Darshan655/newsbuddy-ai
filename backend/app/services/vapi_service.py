@@ -31,31 +31,13 @@ def create_call(
     Returns:
         dict with 'call_id' and 'status'
     """
-    system_prompt = _build_system_prompt(script, user_name, language)
-    voice_config = _get_voice_config(language)
-
     payload = {
         "phoneNumberId": settings.VAPI_PHONE_NUMBER_ID,
         "customer": {
             "number": phone_number,
             "name": user_name,
         },
-        "assistant": {
-            "model": {
-                "provider": "openai",
-                "model": "gpt-4o-mini",
-                "temperature": 0.7,
-                "systemPrompt": system_prompt,
-            },
-            "voice": voice_config,
-            "firstMessage": _get_first_message(user_name, language),
-            "endCallMessage": _get_end_message(language),
-            "maxDurationSeconds": settings.MAX_CALL_DURATION_MINUTES * 60,
-            "backgroundSound": "off",
-            "silenceTimeoutSeconds": 30,
-            "responseDelaySeconds": 0.5,
-            "endCallPhrases": _get_end_phrases(language),
-        },
+        "assistant": build_assistant_config(script, user_name, language),
         "metadata": {
             "call_log_id": str(call_log_id) if call_log_id else "",
             "language": language,
@@ -111,9 +93,33 @@ def get_call_transcript(vapi_call_id: str) -> Optional[str]:
         return None
 
 
-# ── Private helpers ────────────────────────────────────────────────────────────
+# ── Shared assistant helpers (used by both create_call and the web SDK endpoint) ─
 
-def _build_system_prompt(script: str, user_name: str, language: str) -> str:
+def build_assistant_config(script: str, user_name: str, language: str) -> dict:
+    """Return the VAPI assistant object shared by phone calls and the web SDK.
+
+    Omits telephony-specific fields (phoneNumberId, customer) so it can be
+    passed directly to vapi.start(assistantConfig) in the browser.
+    """
+    return {
+        "model": {
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "temperature": 0.7,
+            "systemPrompt": build_system_prompt(script, user_name, language),
+        },
+        "voice": get_voice_config(language),
+        "firstMessage": get_first_message(user_name, language),
+        "endCallMessage": get_end_message(language),
+        "maxDurationSeconds": settings.MAX_CALL_DURATION_MINUTES * 60,
+        "backgroundSound": "off",
+        "silenceTimeoutSeconds": 30,
+        "responseDelaySeconds": 0.5,
+        "endCallPhrases": get_end_phrases(language),
+    }
+
+
+def build_system_prompt(script: str, user_name: str, language: str) -> str:
     first_name = user_name.split()[0]
 
     if language == "hi":
@@ -164,7 +170,7 @@ Rules:
 Important: Only discuss the news provided. Do not make up any information."""
 
 
-def _get_voice_config(language: str) -> dict:
+def get_voice_config(language: str) -> dict:
     """Return ElevenLabs voice config based on language."""
     voice_map = {
         "hi": {
@@ -191,7 +197,7 @@ def _get_voice_config(language: str) -> dict:
     return voice_map.get(language, voice_map["en"])
 
 
-def _get_first_message(user_name: str, language: str) -> str:
+def get_first_message(user_name: str, language: str) -> str:
     first_name = user_name.split()[0]
     messages = {
         "hi": f"नमस्ते {first_name} जी! मैं NewsBuddy हूं। आज {first_name} जी के लिए {first_name} जी के शहर की खबरें लेकर आया हूं। क्या आप सुनने के लिए तैयार हैं?",
@@ -201,7 +207,7 @@ def _get_first_message(user_name: str, language: str) -> str:
     return messages.get(language, messages["en"])
 
 
-def _get_end_message(language: str) -> str:
+def get_end_message(language: str) -> str:
     messages = {
         "hi": "धन्यवाद! NewsBuddy से आपका दिन शुभ हो। नमस्ते!",
         "ne": "धन्यवाद! NewsBuddy बाट तपाईंको दिन शुभ होस्। नमस्ते!",
@@ -210,7 +216,7 @@ def _get_end_message(language: str) -> str:
     return messages.get(language, messages["en"])
 
 
-def _get_end_phrases(language: str) -> list:
+def get_end_phrases(language: str) -> list:
     phrases = {
         "hi": ["धन्यवाद", "बस", "ठीक है", "अलविदा", "बाय"],
         "ne": ["धन्यवाद", "बस", "ठीक छ", "बाई"],

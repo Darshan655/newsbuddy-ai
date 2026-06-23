@@ -346,3 +346,121 @@ def send_breaking_news_alert_task(news_item_id: int):
         return {"alerts_sent": sent}
     finally:
         db.close()
+
+
+@celery_app.task(name="app.tasks.tasks.send_voice_note_now")
+def send_voice_note_now(call_id: int):
+    """
+    Generate a spoken local-news voice note and deliver it over WhatsApp for an
+    on-demand "CALL NOW" request.
+
+    This replaces the VAPI phone-call path for CALL NOW: the webhook creates the
+    CallLog already 'in_progress' (not 'scheduled'), so process_pending_calls
+    never dials it -- this task owns delivery end to end.
+
+    Flow: load user -> generate_voice_note(city) -> send_whatsapp_voice_note ->
+    record the outcome on the CallLog. Hindi/Nepali fall back to English (the
+    template layer is still stubbed for those), with a note in the caption.
+    """
+    import os
+    from app.core.config import settings, VOICENOTES_DIR
+    from app.models.database import SessionLocal, CallLog, User
+    from app.services.news_to_voicenote import generate_voice_note
+    from app.services.whatsapp_service import send_whatsapp_voice_note
+
+    db = SessionLocal()
+    to_number = None
+    try:
+        call = db.query(CallLog).filter(CallLog.id == call_id).first()
+        if not call:
+            return {"status": "error", "call_id": call_id, "reason": "CallLog not found"}
+
+        user = db.query(User).filter(User.id == call.user_id).first()
+        if not user or user.status != "active":
+            call.status = "cancelled"
+            call.error_message = "User inactive or missing at voice-note dispatch"
+            db.commit()
+            return {"status": "cancelled", "call_id": call_id}
+
+        to_number = user.whatsapp_number or user.phone_number
+
+        try:
+            # Unique per-request filename so concurrent CALL NOWs can't clobber
+            # each other's audio; lives under the /voicenotes static mount.
+            output_path = str(VOICENOTES_DIR / f"callnow_{call.id}.mp3")
+
+            fallback_used = False
+            try:
+                audio_path = generate_voice_note(
+                    location=user.city,
+                    topic=None,                      # general city news (per design)
+                    user_name=user.name,
+                    language=user.language,
+                    output_path=output_path,
+                )
+            except NotImplementedError:
+                # Hindi/Nepali templates are still stubbed -> deliver in English.
+                fallback_used = True
+                audio_path = generate_voice_note(
+                    location=user.city,
+                    topic=None,
+                    user_name=user.name,
+                    language="en",
+                    output_path=output_path,
+                )
+                print(f"[Task] send_voice_note_now: language fallback to English "
+                      f"for user {user.id} (lang={user.language})")
+
+            media_url = f"{settings.PUBLIC_BASE_URL.rstrip('/')}/voicenotes/{os.path.basename(audio_path)}"
+
+            body_text = f"🎙️ Your NewsBuddy news update for {user.city}"
+            if fallback_used:
+                body_text += " (News in English — Hindi/Nepali coming soon)"
+
+            result = send_whatsapp_voice_note(to_number, media_url, body_text)
+
+            if result.get("success"):
+                call.status = "completed"
+                call.call_sid = result.get("sid")        # Twilio message SID (MM...)
+                call.ended_at = datetime.utcnow()
+                db.commit()
+                print(f"[Task] send_voice_note_now: delivered call {call_id} "
+                      f"sid={result.get('sid')} fallback={fallback_used}")
+                return {"status": "sent", "call_id": call_id,
+                        "sid": result.get("sid"), "fallback": fallback_used}
+
+            # Twilio accepted-but-failed or auth error: the result dict says why.
+            call.status = "failed"
+            call.error_message = f"Twilio send failed: {result.get('error')}"
+            db.commit()
+            _notify_voicenote_failure(to_number)
+            print(f"[Task] send_voice_note_now: send failed for call {call_id}: {result.get('error')}")
+            return {"status": "failed", "call_id": call_id, "error": result.get("error")}
+
+        except Exception as e:
+            # News fetch / TTS / any unexpected failure -> record + tell the user
+            # so they're not left hanging after the initial ack.
+            call.status = "failed"
+            call.error_message = str(e)[:1000]
+            db.commit()
+            _notify_voicenote_failure(to_number)
+            print(f"[Task] send_voice_note_now: generation/delivery error for call {call_id}: {e}")
+            return {"status": "failed", "call_id": call_id, "error": str(e)}
+
+    finally:
+        db.close()
+
+
+def _notify_voicenote_failure(to_number: str):
+    """Best-effort 'sorry' WhatsApp text so the user isn't left hanging after the
+    initial CALL NOW ack. Never raises."""
+    if not to_number:
+        return
+    try:
+        from app.services.whatsapp_service import send_message
+        send_message(
+            to_number,
+            "😕 Sorry, couldn't generate your news right now — please try again shortly.",
+        )
+    except Exception as e:
+        print(f"[Task] send_voice_note_now: failed to send failure notice to {to_number}: {e}")

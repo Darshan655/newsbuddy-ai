@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NewsBuddy AI — Every morning, your phone rings with the news</title>
+<meta name="description" content="NewsBuddy AI calls your phone every morning and an AI voice reads you the local news from Nepalgunj — in Hindi, Nepali, or English. No smartphone, no app. Sign up on WhatsApp." />
+<meta name="theme-color" content="#14161C" />
+
+<!-- Social sharing -->
+<meta property="og:title" content="NewsBuddy AI — your news, by phone call" />
+<meta property="og:description" content="An AI voice calls you every morning with the local news, in your own language. No smartphone needed. Sign up on WhatsApp." />
+<meta property="og:type" content="website" />
+
+<!-- Favicon: a small rising sun -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314161C'/%3E%3Ccircle cx='16' cy='21' r='6' fill='%23F2A33C'/%3E%3Cg stroke='%23F2A33C' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='16' y1='6' x2='16' y2='9'/%3E%3Cline x1='6' y1='12' x2='8' y2='13.5'/%3E%3Cline x1='26' y1='12' x2='24' y2='13.5'/%3E%3C/g%3E%3Cline x1='4' y1='27' x2='28' y2='27' stroke='%236FA287' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+<!-- Fonts: Fraunces (serif headlines, variable opsz + wght + ital) + Hind (Latin + Devanagari) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Hind:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+  /* ---------- Palette & tokens ---------- */
+  :root{
+    --bg:        #14161C;   /* pre-dawn sky */
+    --bg-soft:   #1B1E27;
+    --surface:   rgba(246,241,231,0.045);
+    --surface-2: rgba(246,241,231,0.07);
+    --cream:     #F6F1E7;   /* warm light */
+    --cream-dim: rgba(246,241,231,0.74);
+    --cream-faint: rgba(246,241,231,0.52);
+    --marigold:  #F2A33C;   /* first light */
+    --marigold-ink: #14161C;
+    --marigold-soft: rgba(242,163,60,0.14);
+    --sage:      #6FA287;   /* verified local */
+    --sage-soft: rgba(111,162,135,0.16);
+    --terracotta:#D6603F;   /* breaking */
+    --terracotta-soft: rgba(214,96,63,0.16);
+    --line:      rgba(246,241,231,0.10);
+    --line-soft: rgba(246,241,231,0.06);
+
+    --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --sans:  'Hind', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+    --maxw: 1120px;
+    --radius: 18px;
+    --radius-lg: 26px;
+  }
+
+  /* ---------- Reset / base ---------- */
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ -webkit-text-size-adjust:100%; }
+  @media (prefers-reduced-motion: no-preference){
+    html{ scroll-behavior:smooth; }
+  }
+  body{
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--cream);
+    line-height:1.6;
+    font-size:clamp(16px, 1rem + 0.2vw, 18px);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    overflow-x:hidden;
+  }
+
+  /* subtle film grain over the whole page */
+  body::after{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity:0.04; mix-blend-mode:overlay;
+  }
+
+  img,svg{ display:block; max-width:100%; }
+  a{ color:inherit; text-decoration:none; }
+  ul{ list-style:none; }
+
+  .wrap{ width:min(100% - 40px, var(--maxw)); margin-inline:auto; position:relative; z-index:1; }
+
+  ::selection{ background:var(--marigold); color:var(--marigold-ink); }
+  :focus-visible{ outline:2.5px solid var(--marigold); outline-offset:3px; border-radius:6px; }
+
+  .skip{
+    position:absolute; left:-999px; top:0; z-index:100;
+    background:var(--marigold); color:var(--marigold-ink); padding:10px 16px;
+    border-radius:0 0 12px 0; font-weight:600;
+  }
+  .skip:focus{ left:0; }
+
+  /* ---------- Typography helpers ---------- */
+  .serif{ font-family:var(--serif); font-optical-sizing:auto; }
+  .eyebrow{
+    font-family:var(--sans); font-weight:600; font-size:0.82rem;
+    letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--marigold);
+    display:inline-flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{ content:""; width:26px; height:1px; background:var(--marigold); opacity:0.6; }
+
+  h1,h2,h3{ font-family:var(--serif); line-height:1.08; font-optical-sizing:auto; }
+  h1{
+    font-size:clamp(2.5rem, 1.6rem + 4.4vw, 4.6rem);
+    font-variation-settings:'opsz' 144,'wght' 500;
+    letter-spacing:-0.015em;
+  }
+  h1 em{ font-style:italic; font-variation-settings:'opsz' 144,'wght' 460; color:var(--marigold); }
+  h2{
+    font-size:clamp(2rem, 1.4rem + 2.4vw, 3rem);
+    font-variation-settings:'opsz' 60,'wght' 560;
+    letter-spacing:-0.01em;
+  }
+  h3{ font-size:1.3rem; font-variation-settings:'opsz' 28,'wght' 600; }
+
+  .lead{ color:var(--cream-dim); font-size:clamp(1.05rem,1rem + 0.45vw,1.28rem); max-width:60ch; }
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    --pad-y:14px; --pad-x:24px;
+    display:inline-flex; align-items:center; justify-content:center; gap:10px;
+    padding:var(--pad-y) var(--pad-x);
+    border-radius:999px; border:1px solid transparent;
+    font-family:var(--sans); font-weight:600; font-size:1rem; cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+    will-change:transform;
+  }
+  .btn svg{ width:20px; height:20px; flex:none; }
+  .btn-primary{
+    background:var(--marigold); color:var(--marigold-ink);
+    box-shadow:0 10px 30px -10px rgba(242,163,60,0.6);
+  }
+  .btn-primary:hover{ transform:translateY(-2px); box-shadow:0 16px 40px -12px rgba(242,163,60,0.75); background:#f6b257; }
+  .btn-ghost{
+    background:transparent; color:var(--cream); border-color:var(--line);
+  }
+  .btn-ghost:hover{ border-color:var(--cream-dim); transform:translateY(-2px); background:var(--surface); }
+  .btn-block{ width:100%; }
+  @media (prefers-reduced-motion: reduce){
+    .btn:hover{ transform:none; }
+  }
+
+  .pill{
+    display:inline-flex; align-items:center; gap:7px;
+    padding:6px 13px; border-radius:999px; font-size:0.82rem; font-weight:500;
+    background:var(--surface); border:1px solid var(--line); color:var(--cream-dim);
+  }
+  .pill.sage{ color:var(--sage); background:var(--sage-soft); border-color:transparent; }
+  .pill .dot{ width:7px; height:7px; border-radius:50%; background:currentColor; }
+
+  /* ---------- Nav ---------- */
+  .nav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(20,22,28,0.72);
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .nav-inner{ display:flex; align-items:center; justify-content:space-between; height:66px; }
+  .brand{ display:flex; align-items:center; gap:11px; font-weight:600; font-size:1.05rem; }
+  .brand .logo{ width:32px; height:32px; flex:none; }
+  .brand b{ font-weight:700; }
+  .nav-links{ display:none; gap:30px; }
+  .nav-links a{ color:var(--cream-dim); font-weight:500; font-size:0.95rem; transition:color .15s; }
+  .nav-links a:hover{ color:var(--cream); }
+  .nav .btn{ --pad-y:9px; --pad-x:16px; font-size:0.92rem; }
+  .nav .btn span{ display:none; }
+  @media (min-width:720px){
+    .nav-links{ display:flex; }
+    .nav .btn span{ display:inline; }
+  }
+
+  /* ---------- Sections ---------- */
+  section{ scroll-margin-top:84px; }
+  .section-pad{ padding-block:clamp(70px,9vw,120px); }
+  .section-head{ max-width:62ch; margin-bottom:clamp(40px,6vw,64px); }
+  .section-head .lead{ margin-top:18px; }
+
+  /* ---------- Hero ---------- */
+  .hero{ position:relative; overflow:hidden; padding-block:clamp(48px,7vw,92px) clamp(60px,8vw,110px); }
+  .hero-glow{
+    position:absolute; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(125% 85% at 50% 118%, rgba(242,163,60,0.30), rgba(214,96,63,0.10) 34%, transparent 60%),
+      radial-gradient(80% 50% at 80% -10%, rgba(111,162,135,0.10), transparent 60%);
+  }
+  /* the sun, just under the horizon */
+  .hero-sun{
+    position:absolute; left:50%; bottom:-140px; transform:translateX(-50%);
+    width:520px; height:520px; max-width:120vw; border-radius:50%;
+    background:radial-gradient(circle, rgba(242,163,60,0.55), rgba(242,163,60,0.12) 45%, transparent 68%);
+    filter:blur(18px); z-index:0; pointer-events:none;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .hero-sun{ animation:sun-breathe 8s ease-in-out infinite; }
+    @keyframes sun-breathe{ 0%,100%{ opacity:0.85; } 50%{ opacity:1; } }
+  }
+
+  .hero-grid{ position:relative; z-index:1; display:grid; gap:clamp(44px,6vw,64px); align-items:center; }
+  @media (min-width:920px){
+    .hero-grid{ grid-template-columns:1.05fr 0.95fr; }
+  }
+  .hero-copy h1{ margin:18px 0 22px; }
+  .hero-cta{ display:flex; flex-wrap:wrap; gap:14px; margin:30px 0 18px; }
+  .hero-note{ color:var(--cream-faint); font-size:0.9rem; }
+  .hero-trust{ display:flex; flex-wrap:wrap; gap:10px; margin-top:26px; }
+
+  /* ---------- Phone mockup ---------- */
+  .phone-stage{ display:flex; justify-content:center; }
+  .phone{
+    position:relative;
+    width:clamp(248px, 74vw, 304px);
+    aspect-ratio:300 / 624;
+    border-radius:46px;
+    padding:13px;
+    background:linear-gradient(160deg,#23262F,#0E0F14 60%);
+    border:1px solid rgba(246,241,231,0.12);
+    box-shadow:
+      0 40px 80px -28px rgba(0,0,0,0.8),
+      0 0 0 1px rgba(0,0,0,0.4),
+      0 0 60px -10px rgba(242,163,60,0.22);
+  }
+  .phone-screen{
+    position:relative; height:100%; border-radius:34px; overflow:hidden;
+    background:
+      radial-gradient(120% 60% at 50% 120%, rgba(242,163,60,0.18), transparent 55%),
+      linear-gradient(180deg,#15171E,#0D0E13);
+    display:flex; flex-direction:column; align-items:center;
+    padding:18px 18px 22px;
+    color:var(--cream);
+  }
+  .notch{
+    position:absolute; top:11px; left:50%; transform:translateX(-50%);
+    width:84px; height:7px; border-radius:99px; background:rgba(0,0,0,0.55);
+  }
+  .statusbar{
+    width:100%; display:flex; justify-content:space-between; align-items:center;
+    font-size:0.72rem; color:var(--cream-dim); letter-spacing:0.02em; margin-top:6px;
+  }
+  .statusbar .sig{ display:flex; gap:3px; align-items:flex-end; height:11px; }
+  .statusbar .sig i{ width:3px; background:var(--cream-dim); border-radius:1px; }
+  .statusbar .sig i:nth-child(1){ height:4px } .statusbar .sig i:nth-child(2){ height:6px }
+  .statusbar .sig i:nth-child(3){ height:8px } .statusbar .sig i:nth-child(4){ height:11px }
+
+  .incoming{
+    margin-top:30px; font-size:0.78rem; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--marigold); font-weight:600;
+  }
+
+  .avatar{
+    position:relative; margin-top:26px; width:96px; height:96px; flex:none;
+    display:grid; place-items:center;
+  }
+  .avatar-core{
+    width:84px; height:84px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #2a2d37, #14161C);
+    border:1px solid rgba(242,163,60,0.4);
+    display:grid; place-items:center; z-index:2;
+    box-shadow:0 0 24px -6px rgba(242,163,60,0.5);
+  }
+  .avatar-core svg{ width:38px; height:38px; color:var(--marigold); }
+  .ring{
+    position:absolute; inset:6px; border-radius:50%;
+    border:2px solid var(--marigold); opacity:0;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .ring{ animation:ring-pulse 2.6s cubic-bezier(.2,.6,.3,1) infinite; }
+    .ring.r2{ animation-delay:.85s; }
+    .ring.r3{ animation-delay:1.7s; }
+    @keyframes ring-pulse{
+      0%{ transform:scale(.62); opacity:.7; }
+      80%{ opacity:.05; }
+      100%{ transform:scale(2.15); opacity:0; }
+    }
+  }
+  /* reduced motion: a calm static halo instead of pulsing */
+  @media (prefers-reduced-motion: reduce){
+    .ring.r1{ opacity:.5; transform:scale(1.25); }
+    .ring.r2, .ring.r3{ display:none; }
+  }
+
+  .caller-name{ font-family:var(--serif); font-size:1.85rem; font-variation-settings:'opsz' 40,'wght' 580; margin-top:22px; }
+  .caller-sub{ color:var(--cream-dim); font-size:0.85rem; margin-top:4px; }
+
+  /* live news ticker on the call screen */
+  .ticker{
+    margin-top:20px; width:100%;
+    display:flex; align-items:center; gap:9px;
+    padding:10px 12px; border-radius:13px;
+    background:rgba(246,241,231,0.05); border:1px solid var(--line-soft);
+    min-height:62px;
+  }
+  .ticker-tag{
+    flex:none; font-size:0.62rem; font-weight:600; letter-spacing:0.04em;
+    padding:4px 8px; border-radius:7px; text-transform:uppercase;
+    background:var(--sage-soft); color:var(--sage); white-space:nowrap;
+  }
+  .ticker.breaking .ticker-tag{ background:var(--terracotta-soft); color:var(--terracotta); }
+  .ticker-text{
+    font-size:0.86rem; line-height:1.35; color:var(--cream);
+    transition:opacity .45s ease;
+  }
+  @media (prefers-reduced-motion: reduce){ .ticker-text{ transition:none; } }
+
+  .call-actions{ margin-top:auto; display:flex; gap:46px; padding-top:18px; }
+  .call-btn{ width:54px; height:54px; border-radius:50%; display:grid; place-items:center; }
+  .call-btn svg{ width:25px; height:25px; color:#fff; }
+  .call-btn.decline{ background:var(--terracotta); transform:rotate(135deg); }
+  .call-btn.accept{ background:#3FB868; }
+  @media (prefers-reduced-motion: no-preference){
+    .call-btn.accept{ animation:accept-glow 1.6s ease-in-out infinite; }
+    @keyframes accept-glow{
+      0%,100%{ box-shadow:0 0 0 0 rgba(63,184,104,0.45); }
+      50%{ box-shadow:0 0 0 12px rgba(63,184,104,0); }
+    }
+  }
+
+  /* ---------- How it works ---------- */
+  .steps{ display:grid; gap:18px; }
+  @media (min-width:600px){ .steps{ grid-template-columns:repeat(2,1fr); } }
+  @media (min-width:1000px){ .steps{ grid-template-columns:repeat(4,1fr); } }
+  .step{
+    background:var(--surface); border:1px solid var(--line-soft);
+    border-radius:var(--radius); padding:26px 22px 28px;
+    transition:transform .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .step:hover{ transform:translateY(-4px); border-color:var(--line); background:var(--surface-2); }
+  .step .num{
+    font-family:var(--serif); font-variation-settings:'opsz' 144,'wght' 430;
+    font-size:3.1rem; line-height:1; color:var(--marigold); display:block;
+  }
+  .step h3{ margin:16px 0 9px; }
+  .step p{ color:var(--cream-dim); font-size:0.96rem; }
+  @media (prefers-reduced-motion: reduce){ .step:hover{ transform:none; } }
+
+  /* ---------- Languages ---------- */
+  .langs-grid{ display:grid; gap:18px; }
+  @media (min-width:760px){ .langs-grid{ grid-template-columns:repeat(3,1fr); } }
+  .lang{
+    background:var(--surface); border:1px solid var(--line-soft);
+    border-radius:var(--radius-lg); padding:30px 26px 28px;
+    transition:transform .2s ease, border-color .2s ease;
+  }
+  .lang:hover{ transform:translateY(-4px); border-color:var(--marigold); }
+  .lang-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+  .lang-native{ font-size:2.1rem; font-weight:700; line-height:1; }
+  .lang-rom{ color:var(--cream-faint); font-size:0.85rem; letter-spacing:0.04em; text-transform:uppercase; }
+  .lang-sample{
+    margin-top:20px; padding:16px 16px 16px 18px; border-radius:13px;
+    background:var(--bg); border-left:3px solid var(--marigold);
+    color:var(--cream-dim); font-size:0.98rem;
+  }
+  .lang-listen{ margin-top:18px; display:inline-flex; align-items:center; gap:9px; color:var(--sage); font-size:0.86rem; font-weight:500; }
+  .lang-listen .bars{ display:flex; gap:2px; align-items:flex-end; height:14px; }
+  .lang-listen .bars i{ width:3px; background:var(--sage); border-radius:2px; }
+  .lang-listen .bars i:nth-child(1){ height:6px } .lang-listen .bars i:nth-child(2){ height:13px }
+  .lang-listen .bars i:nth-child(3){ height:9px } .lang-listen .bars i:nth-child(4){ height:14px }
+  .lang-listen .bars i:nth-child(5){ height:7px }
+  @media (prefers-reduced-motion: reduce){ .lang:hover{ transform:none; } }
+
+  /* ---------- Pricing ---------- */
+  .price-grid{ display:grid; gap:20px; align-items:start; }
+  @media (min-width:860px){ .price-grid{ grid-template-columns:repeat(3,1fr); } }
+  .plan{
+    position:relative; background:var(--surface); border:1px solid var(--line-soft);
+    border-radius:var(--radius-lg); padding:30px 26px 30px;
+    display:flex; flex-direction:column; gap:18px;
+    transition:transform .2s ease, border-color .2s ease;
+  }
+  .plan:hover{ transform:translateY(-4px); }
+  .plan.featured{
+    border-color:var(--marigold);
+    background:linear-gradient(180deg, rgba(242,163,60,0.08), var(--surface) 40%);
+    box-shadow:0 30px 60px -34px rgba(242,163,60,0.5);
+  }
+  @media (min-width:860px){ .plan.featured{ transform:translateY(-14px); } .plan.featured:hover{ transform:translateY(-18px); } }
+  .plan-tag{
+    position:absolute; top:-13px; left:50%; transform:translateX(-50%);
+    background:var(--marigold); color:var(--marigold-ink);
+    font-size:0.74rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
+    padding:6px 14px; border-radius:999px; white-space:nowrap;
+  }
+  .plan-name{ font-size:1.15rem; font-weight:600; }
+  .plan-price{ display:flex; align-items:baseline; gap:6px; }
+  .plan-price .amt{ font-family:var(--serif); font-variation-settings:'opsz' 144,'wght' 600; font-size:3rem; line-height:1; }
+  .plan-price .per{ color:var(--cream-faint); font-size:0.95rem; }
+  .plan-blurb{ color:var(--cream-dim); font-size:0.95rem; }
+  .plan-features{ display:flex; flex-direction:column; gap:12px; }
+  .plan-features li{ display:flex; gap:11px; align-items:flex-start; font-size:0.96rem; color:var(--cream-dim); }
+  .plan-features svg{ width:19px; height:19px; flex:none; margin-top:3px; color:var(--sage); }
+  .plan-features li.hot svg{ color:var(--terracotta); }
+  .plan-features li.hot{ color:var(--cream); }
+  .plan .btn{ margin-top:auto; }
+  @media (prefers-reduced-motion: reduce){ .plan:hover, .plan.featured:hover{ transform:none; } }
+
+  /* ---------- Footer ---------- */
+  .footer-cta{
+    text-align:center; border-radius:var(--radius-lg);
+    background:
+      radial-gradient(100% 130% at 50% 0%, rgba(242,163,60,0.16), transparent 60%),
+      var(--surface);
+    border:1px solid var(--line); padding:clamp(40px,6vw,64px) 24px;
+  }
+  .footer-cta h2{ margin-bottom:14px; }
+  .footer-cta p{ color:var(--cream-dim); max-width:48ch; margin:0 auto 28px; }
+  footer{ padding-block:48px 56px; }
+  .foot-bottom{
+    margin-top:46px; padding-top:26px; border-top:1px solid var(--line-soft);
+    display:flex; flex-wrap:wrap; gap:18px 30px; align-items:center; justify-content:space-between;
+    color:var(--cream-faint); font-size:0.88rem;
+  }
+  .foot-links{ display:flex; gap:22px; flex-wrap:wrap; }
+  .foot-links a:hover{ color:var(--cream); }
+
+  /* ---------- Scroll reveal (progressive, JS-gated) ---------- */
+  .js .reveal{ opacity:0; transform:translateY(20px); transition:opacity .7s ease, transform .7s ease; }
+  .js .reveal.in{ opacity:1; transform:none; }
+  @media (prefers-reduced-motion: reduce){
+    .js .reveal{ opacity:1; transform:none; transition:none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- ================= NAV ================= -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top" aria-label="NewsBuddy AI home">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="#1B1E27"/>
+        <circle cx="16" cy="21" r="6" fill="#F2A33C"/>
+        <g stroke="#F2A33C" stroke-width="2" stroke-linecap="round">
+          <line x1="16" y1="6" x2="16" y2="9"/>
+          <line x1="6" y1="12" x2="8" y2="13.5"/>
+          <line x1="26" y1="12" x2="24" y2="13.5"/>
+        </g>
+        <line x1="5" y1="27" x2="27" y2="27" stroke="#6FA287" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span>News<b>Buddy</b> AI</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#languages">Languages</a>
+      <a href="#pricing">Pricing</a>
+    </nav>
+    <a class="btn btn-primary" href="https://wa.me/14155238886?text=join%20divide-wild">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.638 5.448l-.999 3.648 3.85-1.01zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
+      <span>Join on WhatsApp</span>
+    </a>
+  </div>
+</header>
+
+<main id="main">
+<a id="top"></a>
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="hero-sun" aria-hidden="true"></div>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow" lang="ne" title="Nepalgunj · the first light of morning">नेपालगञ्ज · बिहानको पहिलो उज्यालो</span>
+      <h1 class="serif">Every morning, your phone <em>rings</em> with the news.</h1>
+      <p class="lead">
+        You know how much the news matters — the mandi rate, whether the road to Kohalpur is open,
+        the weather before you load the truck. NewsBuddy calls your phone every morning and an
+        AI voice reads you the local news, in your own language. No smartphone, no app, no reading.
+        Just pick up and listen.
+      </p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="https://wa.me/14155238886?text=join%20divide-wild">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.638 5.448l-.999 3.648 3.85-1.01zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
+          Sign up free on WhatsApp
+        </a>
+        <a class="btn btn-ghost" href="#how">See how it works</a>
+      </div>
+      <p class="hero-note">Free to start · 3 calls a week · Stop anytime by saying “stop”.</p>
+      <div class="hero-trust">
+        <span class="pill sage"><span class="dot"></span> Verified local news</span>
+        <span class="pill">No smartphone needed</span>
+        <span class="pill" lang="hi">हिन्दी · नेपाली · English</span>
+      </div>
+    </div>
+
+    <!-- Signature element: incoming-call phone mockup -->
+    <div class="phone-stage">
+      <div class="phone" aria-hidden="true">
+        <div class="phone-screen">
+          <div class="notch"></div>
+          <div class="statusbar">
+            <span>5:58</span>
+            <span class="sig" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="incoming">Incoming call</div>
+
+          <div class="avatar">
+            <span class="ring r1"></span>
+            <span class="ring r2"></span>
+            <span class="ring r3"></span>
+            <span class="avatar-core">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.53 15.53 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24 11.36 11.36 0 003.56.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.36 11.36 0 00.57 3.56 1 1 0 01-.24 1.02l-2.21 2.21z"/></svg>
+            </span>
+          </div>
+
+          <div class="caller-name serif">NewsBuddy</div>
+          <div class="caller-sub" lang="ne">आजको समाचार · Nepalgunj</div>
+
+          <div class="ticker" id="ticker">
+            <span class="ticker-tag" id="tickerTag" lang="ne">मण्डी भाउ</span>
+            <span class="ticker-text" id="tickerText" lang="ne">मण्डीमा आज प्याज ₹४० प्रति किलो</span>
+          </div>
+
+          <div class="call-actions">
+            <span class="call-btn decline">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.53 15.53 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24 11.36 11.36 0 003.56.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.36 11.36 0 00.57 3.56 1 1 0 01-.24 1.02l-2.21 2.21z"/></svg>
+            </span>
+            <span class="call-btn accept">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.53 15.53 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24 11.36 11.36 0 003.56.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.36 11.36 0 00.57 3.56 1 1 0 01-.24 1.02l-2.21 2.21z"/></svg>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section id="how" class="section-pad">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">How it works</span>
+      <h2 class="serif" style="margin-top:14px;">Four small steps. Then you just answer the phone.</h2>
+      <p class="lead">No setup headaches. If you can send a WhatsApp message, you can use NewsBuddy.</p>
+    </div>
+    <ol class="steps">
+      <li class="step reveal">
+        <span class="num">1</span>
+        <h3>Message us on WhatsApp</h3>
+        <p>Send us a quick “hi” on WhatsApp. That’s the whole sign-up — no forms to fill, nothing to download.</p>
+      </li>
+      <li class="step reveal">
+        <span class="num">2</span>
+        <h3>Tell us about you</h3>
+        <p>Your city, the language you’re comfortable in, and what you care about — mandi prices, weather, sports, local politics.</p>
+      </li>
+      <li class="step reveal">
+        <span class="num">3</span>
+        <h3>We call you every morning</h3>
+        <p>Your phone rings at the time you choose. An AI voice reads you the news that actually matters in your town, in your language.</p>
+      </li>
+      <li class="step reveal">
+        <span class="num">4</span>
+        <h3>Ask, or read it later</h3>
+        <p>Have a question during the call? Just ask out loud. Want it in writing too? We send a short summary on WhatsApp after.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ================= LANGUAGES ================= -->
+<section id="languages" class="section-pad">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Your language</span>
+      <h2 class="serif" style="margin-top:14px;">Three languages, one phone call.</h2>
+      <p class="lead">Pick the one that feels like home. You can switch any time — just tell us on WhatsApp.</p>
+    </div>
+    <div class="langs-grid">
+      <div class="lang reveal">
+        <div class="lang-head">
+          <span class="lang-native" lang="hi">हिन्दी</span>
+          <span class="lang-rom">Hindi</span>
+        </div>
+        <p class="lang-sample" lang="hi">“नमस्ते! आज नेपालगंज की ताज़ा खबरें सुनिए — मंडी भाव, मौसम और शहर की बातें।”</p>
+        <span class="lang-listen"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span> What you’ll hear</span>
+      </div>
+      <div class="lang reveal">
+        <div class="lang-head">
+          <span class="lang-native" lang="ne">नेपाली</span>
+          <span class="lang-rom">Nepali</span>
+        </div>
+        <p class="lang-sample" lang="ne">“नमस्ते! आजका नेपालगञ्जका मुख्य समाचार सुन्नुहोस् — बजार भाउ, मौसम र सहरका कुरा।”</p>
+        <span class="lang-listen"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span> What you’ll hear</span>
+      </div>
+      <div class="lang reveal">
+        <div class="lang-head">
+          <span class="lang-native">English</span>
+          <span class="lang-rom">English</span>
+        </div>
+        <p class="lang-sample">“Good morning! Here’s what’s happening in Nepalgunj today — market rates, weather, and news around town.”</p>
+        <span class="lang-listen"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span> What you’ll hear</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING ================= -->
+<section id="pricing" class="section-pad">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Pricing</span>
+      <h2 class="serif" style="margin-top:14px;">Start free. Upgrade only if you love it.</h2>
+      <p class="lead">No card needed to begin. Pay by the month, cancel whenever — just tell us on WhatsApp.</p>
+    </div>
+    <div class="price-grid">
+      <!-- Free -->
+      <div class="plan reveal">
+        <div class="plan-name">Free</div>
+        <div class="plan-price"><span class="amt">₹0</span><span class="per">to start</span></div>
+        <p class="plan-blurb">Try it for a couple of weeks and see if the morning call fits your day.</p>
+        <ul class="plan-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> 3 calls a week</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Your local headlines</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Choose your language</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Stop anytime — just say so</li>
+        </ul>
+        <a class="btn btn-ghost btn-block" href="https://wa.me/14155238886?text=join%20divide-wild">Start free</a>
+      </div>
+
+      <!-- Basic (featured) -->
+      <div class="plan featured reveal">
+        <span class="plan-tag">Most popular</span>
+        <div class="plan-name">Basic</div>
+        <div class="plan-price"><span class="amt">₹149</span><span class="per">/ month</span></div>
+        <p class="plan-blurb">The full morning habit — a call every day, plus a written summary to keep.</p>
+        <ul class="plan-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> A call every morning</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> WhatsApp summary after each call</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Pick your call time</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Ask questions during the call</li>
+        </ul>
+        <a class="btn btn-primary btn-block" href="https://wa.me/14155238886?text=join%20divide-wild">Choose Basic</a>
+      </div>
+
+      <!-- Premium -->
+      <div class="plan reveal">
+        <div class="plan-name">Premium</div>
+        <div class="plan-price"><span class="amt">₹299</span><span class="per">/ month</span></div>
+        <p class="plan-blurb">For when being first to know is worth it — breaking news the moment it happens.</p>
+        <ul class="plan-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Everything in Basic</li>
+          <li class="hot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg> Breaking-news calls when something big happens</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Priority morning slot — among the first called</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Add a family member’s number</li>
+        </ul>
+        <a class="btn btn-ghost btn-block" href="https://wa.me/14155238886?text=join%20divide-wild">Choose Premium</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="footer-cta reveal">
+      <span class="eyebrow" style="justify-content:center;">Ready when you are</span>
+      <h2 class="serif" style="margin-top:14px;">Your news is one phone call away.</h2>
+      <p>Send “join” on WhatsApp and we’ll have you set up in two minutes. Tomorrow morning, your phone rings.</p>
+      <a class="btn btn-primary" href="https://wa.me/14155238886?text=join%20divide-wild">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.638 5.448l-.999 3.648 3.85-1.01zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
+        Sign up on WhatsApp
+      </a>
+    </div>
+
+    <div class="foot-bottom">
+      <div class="brand" style="font-size:0.98rem;">
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true" style="width:26px;height:26px;">
+          <rect width="32" height="32" rx="8" fill="#1B1E27"/>
+          <circle cx="16" cy="21" r="6" fill="#F2A33C"/>
+          <g stroke="#F2A33C" stroke-width="2" stroke-linecap="round"><line x1="16" y1="6" x2="16" y2="9"/><line x1="6" y1="12" x2="8" y2="13.5"/><line x1="26" y1="12" x2="24" y2="13.5"/></g>
+          <line x1="5" y1="27" x2="27" y2="27" stroke="#6FA287" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>© 2026 NewsBuddy AI</span>
+      </div>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="#how">How it works</a>
+        <a href="#languages">Languages</a>
+        <a href="#pricing">Pricing</a>
+        <a href="https://wa.me/14155238886?text=join%20divide-wild">WhatsApp</a>
+      </nav>
+      <span>Made with care in Nepalgunj 🌅</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Mark JS as available so the scroll-reveal styles kick in (graceful no-JS fallback).
+  document.documentElement.classList.add('js');
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- Live news ticker on the call screen ---- */
+  (function(){
+    const tEl   = document.getElementById('tickerText');
+    const tagEl = document.getElementById('tickerTag');
+    const box   = document.getElementById('ticker');
+    if (!tEl) return;
+
+    // Real-feeling morning headlines for a Tier 2/3 town (mandi, transport, breaking, weather).
+    const headlines = [
+      { tag: 'मण्डी भाउ',  text: 'मण्डीमा आज प्याज ₹४० प्रति किलो',            lang: 'ne', kind: 'verified' },
+      { tag: 'यातायात',    text: 'नेपालगञ्ज–कोहलपुर सडक खुल्ला, यातायात सुचारु', lang: 'ne', kind: 'verified' },
+      { tag: 'ताजा खबर',   text: 'आज दिउँसो बजार बन्द रहने सूचना',           lang: 'ne', kind: 'breaking' },
+      { tag: 'मौसम',       text: 'आज मौसम सफा, अधिकतम तापक्रम ३२°',          lang: 'hi', kind: 'verified' }
+    ];
+
+    let i = 0;
+    function render(idx){
+      const h = headlines[idx];
+      tagEl.textContent = h.tag;  tagEl.setAttribute('lang', h.lang);
+      tEl.textContent   = h.text; tEl.setAttribute('lang', h.lang);
+      box.classList.toggle('breaking', h.kind === 'breaking');
+    }
+    render(0);
+
+    function advance(){
+      i = (i + 1) % headlines.length;
+      if (reduceMotion){ render(i); return; }   // instant swap, no fade
+      tEl.style.opacity = '0';
+      setTimeout(() => { render(i); tEl.style.opacity = '1'; }, 450);
+    }
+    setInterval(advance, 3200);
+  })();
+
+  /* ---- Scroll reveal ---- */
+  (function(){
+    const items = document.querySelectorAll('.reveal');
+    if (reduceMotion || !('IntersectionObserver' in window)){
+      items.forEach(el => el.classList.add('in'));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.14, rootMargin: '0px 0px -8% 0px' });
+    items.forEach(el => io.observe(el));
+  })();
+</script>
+</body>
+</html>

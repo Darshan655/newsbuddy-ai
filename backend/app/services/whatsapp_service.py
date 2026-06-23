@@ -33,6 +33,63 @@ def send_message(to_number: str, message: str) -> Optional[str]:
         return None
 
 
+def send_whatsapp_voice_note(
+    to_number: str,
+    media_url: str,
+    body_text: Optional[str] = None,
+) -> dict:
+    """
+    Send a WhatsApp message with a media attachment (e.g. an .mp3 voice note)
+    via Twilio. Reuses the same auth as send_message: account SID + auth token
+    from settings, with TWILIO_WHATSAPP_FROM as the sender.
+
+    Args:
+        to_number: recipient in WhatsApp format, e.g. "whatsapp:+919876543210".
+                   A bare E.164 number ("+919876543210") is also accepted and
+                   gets the "whatsapp:" prefix added.
+        media_url: a PUBLICLY reachable URL to the media file. Twilio fetches it
+                   server-side, so localhost / 127.0.0.1 will NOT work -- it must
+                   be an ngrok/deployed/public URL, e.g.
+                   "https://<host>/voicenotes/Uttarakhand_accident.mp3".
+        body_text: optional caption text to send alongside the media.
+
+    Returns:
+        A result dict, e.g.
+            {"success": True,  "sid": "MM...", "status": "queued",
+             "to": "whatsapp:+91...", "error": None}
+        or on failure
+            {"success": False, "sid": None, "status": None,
+             "to": "whatsapp:+91...", "error": "<message>"}
+    """
+    to = to_number if to_number.startswith("whatsapp:") else f"whatsapp:{to_number}"
+    try:
+        client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+        params = {
+            "from_": settings.TWILIO_WHATSAPP_FROM,
+            "to": to,
+            "media_url": [media_url],
+        }
+        if body_text:
+            params["body"] = body_text
+        msg = client.messages.create(**params)
+        return {
+            "success": True,
+            "sid": msg.sid,
+            "status": msg.status,
+            "to": to,
+            "error": None,
+        }
+    except Exception as e:
+        print(f"[WhatsApp] Failed to send voice note to {to}: {e}")
+        return {
+            "success": False,
+            "sid": None,
+            "status": None,
+            "to": to,
+            "error": str(e),
+        }
+
+
 def send_post_call_summary(
     to_number: str,
     user_name: str,

@@ -1,5 +1,13 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
 from typing import Optional
+
+
+# Backend project root = the `backend/` directory (this file lives at
+# backend/app/core/config.py). On-disk paths are anchored to this so they don't
+# depend on whatever directory the process happens to start in.
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
@@ -27,6 +35,15 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_WHATSAPP_FROM: str = "whatsapp:+14155238886"  # Twilio sandbox default
 
+    # Media / static files
+    # Absolute base dir for generated media (voice-note .mp3s, etc.). Anchored to
+    # the backend root by default; override with MEDIA_DIR in .env for deploys.
+    MEDIA_DIR: str = str(BASE_DIR / "media")
+    # Public, internet-reachable origin the app is served at. Twilio fetches media
+    # server-side, so media URLs must be public (NOT localhost) -- set this to your
+    # ngrok/deployed origin, e.g. https://abc123.ngrok.io
+    PUBLIC_BASE_URL: str = "http://localhost:8000"
+
     # Exotel (India calling - as per business report)
     EXOTEL_API_KEY: str = ""
     EXOTEL_API_TOKEN: str = ""
@@ -53,3 +70,8 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Where generated voice-note .mp3s are written AND served from (mounted at
+# /voicenotes in main.py). Single source of truth shared by the producer
+# (news_to_voicenote.generate_voice_note) and the server (static mount).
+VOICENOTES_DIR = Path(settings.MEDIA_DIR) / "voicenotes"
