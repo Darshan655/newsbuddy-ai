@@ -1,2 +1,2 @@
 #!/bin/bash
-celery -A app.tasks.celery_app worker --beat --loglevel=info
+celery -A app.tasks.celery_app worker --beat --loglevel=info --concurrency=1
