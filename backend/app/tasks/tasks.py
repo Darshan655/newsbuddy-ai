@@ -9,82 +9,118 @@ from app.tasks.celery_app import celery_app
 def schedule_daily_calls(self):
     """
     Run at 5:30 AM IST daily.
-    1. Gets all active users
-    2. Selects top 5 news items per user (city + topics)
-    3. Generates personalised script via OpenAI
-    4. Creates CallLog entries for their preferred call time
+
+    Delivers each active user's local-news voice note over WhatsApp -- this
+    replaces the old VAPI phone-call scheduling path. For every active user we:
+      1. skip free-tier users who've hit the weekly cap (>= 3),
+      2. skip anyone already delivered to / mid-delivery today,
+      3. generate a spoken city-news .mp3 via generate_voice_note,
+      4. send it as a WhatsApp voice note via Twilio, and
+      5. record a CallLog (completed/failed) + bump calls_this_week on success.
+
+    Each user runs in its own try/except and is committed independently, so one
+    user's failure can never stop or roll back the rest of the batch.
     """
-    from app.models.database import SessionLocal, User, NewsItem, CallLog
-    from app.services.openai_service import generate_script
-    from datetime import date
+    import os
+    from datetime import time
+    from app.core.config import settings, VOICENOTES_DIR
+    from app.models.database import SessionLocal, User, CallLog
+    from app.services.news_to_voicenote import generate_voice_note
+    from app.services.whatsapp_service import send_whatsapp_voice_note
 
     db = SessionLocal()
     try:
-        today = date.today()
+        now = datetime.utcnow()
+        today = now.date()
+        day_start = datetime.combine(today, time.min)
+        day_end = day_start + timedelta(days=1)
+
         active_users = db.query(User).filter(User.status == "active").all()
-        scheduled_count = 0
+        sent = 0
+        failed = 0
 
         for user in active_users:
             try:
-                # Skip free users who've used weekly limit
+                # 1. Free tier weekly cap.
                 if user.subscription_tier == "free" and (user.calls_this_week or 0) >= 3:
                     continue
 
-                # Parse call time
-                h, m = map(int, (user.preferred_call_time or "07:00").split(":"))
-                call_time = datetime.combine(today, datetime.min.time().replace(hour=h, minute=m))
-
-                # Skip if already scheduled
-                existing = db.query(CallLog).filter(
-                    CallLog.user_id == user.id,
-                    CallLog.scheduled_at == call_time,
-                    CallLog.status.in_(["scheduled", "completed", "in_progress"]),
-                ).first()
-                if existing:
-                    continue
-
-                # Get relevant news
-                news_items = (
-                    db.query(NewsItem)
+                # 2. Already delivered (or a CALL NOW in flight) today -> skip.
+                already_today = (
+                    db.query(CallLog)
                     .filter(
-                        NewsItem.is_active == True,
-                        NewsItem.city.ilike(f"%{user.city}%"),
+                        CallLog.user_id == user.id,
+                        CallLog.created_at >= day_start,
+                        CallLog.created_at < day_end,
+                        CallLog.status.in_(["completed", "in_progress"]),
                     )
-                    .order_by(NewsItem.importance_score.desc())
-                    .limit(5)
-                    .all()
+                    .first()
                 )
-
-                if not news_items:
+                if already_today:
                     continue
 
-                # Generate script
-                script = generate_script(
-                    news_items=news_items,
+                to_number = user.whatsapp_number or user.phone_number
+
+                # 3. Generate the voice note. Unique per-user/day filename so two
+                # users in the same city can't clobber each other's audio under
+                # the shared /voicenotes static mount.
+                output_path = str(VOICENOTES_DIR / f"daily_{user.id}_{today.isoformat()}.mp3")
+                audio_path = generate_voice_note(
+                    location=user.city,
+                    topic=None,
                     user_name=user.name,
-                    city=user.city,
-                    language=user.language,
-                    topics=user.topics or [],
+                    output_path=output_path,
                 )
 
-                # Create call log
-                call = CallLog(
-                    user_id=user.id,
-                    scheduled_at=call_time,
-                    news_items_delivered=[item.id for item in news_items],
-                    script_used=script,
-                    status="scheduled",
-                )
-                db.add(call)
-                scheduled_count += 1
+                # 4. Build the public media URL Twilio fetches, then send.
+                media_url = f"{settings.PUBLIC_BASE_URL.rstrip('/')}/voicenotes/{os.path.basename(audio_path)}"
+                caption = f"🎙️ Your NewsBuddy news update for {user.city}"
+                result = send_whatsapp_voice_note(to_number, media_url, caption)
+
+                # 5. Record the outcome, isolated per user via a per-user commit.
+                if result.get("success"):
+                    db.add(CallLog(
+                        user_id=user.id,
+                        scheduled_at=now,
+                        status="completed",
+                        call_sid=result.get("sid"),      # Twilio message SID (MM...)
+                        ended_at=datetime.utcnow(),
+                    ))
+                    user.calls_this_week = (user.calls_this_week or 0) + 1
+                    db.commit()
+                    sent += 1
+                    print(f"[Task] schedule_daily_calls: delivered to user {user.id} sid={result.get('sid')}")
+                else:
+                    db.add(CallLog(
+                        user_id=user.id,
+                        scheduled_at=now,
+                        status="failed",
+                        error_message=f"WhatsApp send failed: {result.get('error')}"[:1000],
+                    ))
+                    db.commit()
+                    failed += 1
+                    print(f"[Task] schedule_daily_calls: send failed for user {user.id}: {result.get('error')}")
 
             except Exception as e:
-                print(f"[Task] Failed to schedule call for user {user.id}: {e}")
+                # Isolate per-user failures: roll back this user's partial work,
+                # record a failed CallLog (best effort), and keep going.
+                db.rollback()
+                try:
+                    db.add(CallLog(
+                        user_id=user.id,
+                        scheduled_at=datetime.utcnow(),
+                        status="failed",
+                        error_message=str(e)[:1000],
+                    ))
+                    db.commit()
+                except Exception:
+                    db.rollback()
+                failed += 1
+                print(f"[Task] schedule_daily_calls: failed for user {user.id}: {e}")
                 continue
 
-        db.commit()
-        print(f"[Task] Scheduled {scheduled_count} calls for {today}")
-        return {"scheduled": scheduled_count}
+        print(f"[Task] schedule_daily_calls: sent={sent} failed={failed} on {today}")
+        return {"sent": sent, "failed": failed}
 
     except Exception as exc:
         raise self.retry(exc=exc, countdown=60)

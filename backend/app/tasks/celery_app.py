@@ -30,15 +30,10 @@ celery_app.conf.update(
 
 # ── Periodic schedule (Celery Beat) ───────────────────────────────────────────
 celery_app.conf.beat_schedule = {
-    # Generate scripts and schedule calls at 5:30 AM IST
+    # Deliver daily news voice notes over WhatsApp at 5:30 AM IST
     "schedule-daily-calls": {
         "task": "app.tasks.tasks.schedule_daily_calls",
         "schedule": crontab(hour=5, minute=30),
-    },
-    # Process any pending calls every minute
-    "process-pending-calls": {
-        "task": "app.tasks.tasks.process_pending_calls",
-        "schedule": crontab(minute="*"),  # every minute
     },
     # Reset weekly free tier call counters every Monday midnight
     "reset-weekly-counters": {
