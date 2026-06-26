@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     # ngrok/deployed origin, e.g. https://abc123.ngrok.io
     PUBLIC_BASE_URL: str = "http://localhost:8000"
 
+    # Supabase Storage (voice-note hosting)
+    # On Railway the local filesystem is ephemeral and the /voicenotes static mount
+    # isn't a durable public host, so generated .mp3s are uploaded to a public
+    # Supabase Storage bucket ("voicenotes") and that public URL is handed to Twilio.
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
+
     # Exotel (India calling - as per business report)
     EXOTEL_API_KEY: str = ""
     EXOTEL_API_TOKEN: str = ""

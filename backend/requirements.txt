@@ -30,5 +30,8 @@ requests==2.32.3
 # WhatsApp / SMS
 twilio==9.3.2
 
+# Storage (voice-note hosting — public Supabase bucket Twilio fetches MP3s from)
+supabase==2.3.4
+
 # Utilities
 python-dotenv==1.0.1

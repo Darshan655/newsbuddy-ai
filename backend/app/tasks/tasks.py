@@ -73,7 +73,13 @@ def schedule_daily_calls(self):
                 )
 
                 # 4. Build the public media URL Twilio fetches, then send.
-                media_url = f"{settings.PUBLIC_BASE_URL.rstrip('/')}/voicenotes/{os.path.basename(audio_path)}"
+                # generate_voice_note returns a Supabase public URL (https://...);
+                # use it directly. Fall back to the PUBLIC_BASE_URL static mount only
+                # if we got a bare local path (e.g. Supabase isn't configured).
+                if audio_path.startswith("https://"):
+                    media_url = audio_path
+                else:
+                    media_url = f"{settings.PUBLIC_BASE_URL.rstrip('/')}/voicenotes/{os.path.basename(audio_path)}"
                 caption = f"🎙️ Your NewsBuddy news update for {user.city}"
                 result = send_whatsapp_voice_note(to_number, media_url, caption)
 
@@ -447,7 +453,13 @@ def send_voice_note_now(call_id: int):
                 print(f"[Task] send_voice_note_now: language fallback to English "
                       f"for user {user.id} (lang={user.language})")
 
-            media_url = f"{settings.PUBLIC_BASE_URL.rstrip('/')}/voicenotes/{os.path.basename(audio_path)}"
+            # generate_voice_note returns a Supabase public URL (https://...); use it
+            # directly. Fall back to the PUBLIC_BASE_URL static mount only if we got a
+            # bare local path (e.g. Supabase isn't configured).
+            if audio_path.startswith("https://"):
+                media_url = audio_path
+            else:
+                media_url = f"{settings.PUBLIC_BASE_URL.rstrip('/')}/voicenotes/{os.path.basename(audio_path)}"
 
             body_text = f"🎙️ Your NewsBuddy news update for {user.city}"
             if fallback_used:
