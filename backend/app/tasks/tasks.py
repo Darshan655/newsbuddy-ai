@@ -408,7 +408,7 @@ def send_voice_note_now(call_id: int):
     from app.core.config import settings, VOICENOTES_DIR
     from app.models.database import SessionLocal, CallLog, User
     from app.services.news_to_voicenote import generate_voice_note
-    from app.services.whatsapp_service import send_whatsapp_voice_note
+    from app.services.whatsapp_service import send_whatsapp_voice_note, send_whatsapp_media
 
     db = SessionLocal()
     to_number = None
@@ -477,6 +477,14 @@ def send_voice_note_now(call_id: int):
             result = send_whatsapp_voice_note(to_number, media_url, body_text)
 
             if result.get("success"):
+                # Some sandbox accounts don't render media sent alongside a text
+                # body reliably; try a second, media-only message as a best
+                # effort. Its outcome doesn't affect the task's own result.
+                media_result = send_whatsapp_media(to_number, media_url)
+                print(f"[Task] send_voice_note_now: media-only follow-up for call "
+                      f"{call_id} -> success={media_result.get('success')} "
+                      f"sid={media_result.get('sid')} error={media_result.get('error')}")
+
                 call.status = "completed"
                 call.call_sid = result.get("sid")        # Twilio message SID (MM...)
                 call.ended_at = datetime.utcnow()

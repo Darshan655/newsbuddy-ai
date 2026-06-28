@@ -92,6 +92,53 @@ def send_whatsapp_voice_note(
         }
 
 
+def send_whatsapp_media(to_number: str, media_url: str) -> dict:
+    """
+    Send a WhatsApp message with ONLY a media attachment and no body text, via
+    Twilio. Some sandbox accounts render media that's sent on its own message
+    more reliably than media combined with a text body — this is meant to be
+    fired as a second, best-effort message after a plain-text one.
+
+    Args:
+        to_number: recipient in WhatsApp format, e.g. "whatsapp:+919876543210".
+                   A bare E.164 number ("+919876543210") is also accepted and
+                   gets the "whatsapp:" prefix added.
+        media_url: a PUBLICLY reachable URL to the media file.
+
+    Returns:
+        A result dict, e.g.
+            {"success": True,  "sid": "MM...", "status": "queued",
+             "to": "whatsapp:+91...", "error": None}
+        or on failure
+            {"success": False, "sid": None, "status": None,
+             "to": "whatsapp:+91...", "error": "<message>"}
+    """
+    to = to_number if to_number.startswith("whatsapp:") else f"whatsapp:{to_number}"
+    try:
+        client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+        msg = client.messages.create(
+            from_=settings.TWILIO_WHATSAPP_FROM,
+            to=to,
+            media_url=[media_url],
+        )
+        return {
+            "success": True,
+            "sid": msg.sid,
+            "status": msg.status,
+            "to": to,
+            "error": None,
+        }
+    except Exception as e:
+        print(f"[WhatsApp] Failed to send media-only message to {to}: {e}")
+        return {
+            "success": False,
+            "sid": None,
+            "status": None,
+            "to": to,
+            "error": str(e),
+        }
+
+
 def send_post_call_summary(
     to_number: str,
     user_name: str,
