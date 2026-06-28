@@ -20,6 +20,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+import requests
+
 # Make the backend root (…/backend) importable so this module works both as a
 # package import (app.services.news_to_voicenote, e.g. from the API layer) and
 # when run directly from the services folder (python news_to_voicenote.py).
@@ -68,57 +70,29 @@ def generate_voice_note(location: str, topic: Optional[str] = None,
 
 
 def upload_to_supabase(file_path: str, filename: str) -> str:
-    """
-    Upload a generated .mp3 to the public "voicenotes" Supabase Storage bucket and
-    return its public URL.
+    supabase_url = settings.SUPABASE_URL.rstrip("/")
+    supabase_key = settings.SUPABASE_KEY
 
-    Uses a direct PUT to the Storage REST API rather than the `supabase` Python
-    client: the client does not work correctly with the new `sb_secret_...` key
-    format, and uploads were failing silently. Upsert is enabled via the
-    "x-upsert" header so a retried or re-run delivery overwrites the existing
-    object instead of failing on a duplicate. Credentials come from
-    settings.SUPABASE_URL and settings.SUPABASE_KEY.
-
-    Returns:
-        The object's public URL, e.g.
-        "https://<project>.supabase.co/storage/v1/object/public/voicenotes/<filename>".
-    """
-    import requests
-
-    if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-        raise RuntimeError(
-            "Supabase storage is not configured: set SUPABASE_URL and SUPABASE_KEY."
-        )
-
-    # SUPABASE_URL may have been configured with a trailing /rest/v1 (the REST
-    # API base); storage lives under the bare project URL, so strip it off.
-    base_url = settings.SUPABASE_URL.rstrip("/")
-    if base_url.endswith("/rest/v1"):
-        base_url = base_url[: -len("/rest/v1")]
-    upload_url = f"{base_url}/storage/v1/object/voicenotes/{filename}"
+    upload_url = f"{supabase_url}/storage/v1/object/voicenotes/{filename}"
+    public_url = f"{supabase_url}/storage/v1/object/public/voicenotes/{filename}"
 
     with open(file_path, "rb") as f:
-        audio_bytes = f.read()
+        file_bytes = f.read()
 
     headers = {
-        "Authorization": f"Bearer {settings.SUPABASE_KEY}",
+        "Authorization": f"Bearer {supabase_key}",
         "Content-Type": "audio/mpeg",
-        "x-upsert": "true",
+        "x-upsert": "true"
     }
 
-    masked_headers = {**headers, "Authorization": "Bearer ***"}
-    print(f"Supabase upload: PUT {upload_url} headers={masked_headers}")
+    print(f"[Supabase] Uploading {filename} to {upload_url}")
+    response = requests.put(upload_url, data=file_bytes, headers=headers)
+    print(f"[Supabase] Response: {response.status_code} — {response.text}")
 
-    response = requests.put(upload_url, headers=headers, data=audio_bytes)
+    if response.status_code not in (200, 201):
+        raise Exception(f"Supabase upload failed: {response.status_code} — {response.text}")
 
-    if not response.ok:
-        print(
-            f"Supabase upload failed: {response.status_code} {response.reason} - "
-            f"{response.text}"
-        )
-        response.raise_for_status()
-
-    return f"{base_url}/storage/v1/object/public/voicenotes/{filename}"
+    return public_url
 
 
 def _safe_filename_part(value: str) -> str:
