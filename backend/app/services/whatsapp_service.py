@@ -39,19 +39,19 @@ def send_whatsapp_voice_note(
     body_text: Optional[str] = None,
 ) -> dict:
     """
-    Send a WhatsApp message with a media attachment (e.g. an .mp3 voice note)
-    via Twilio. Reuses the same auth as send_message: account SID + auth token
+    Send a plain-text WhatsApp message with a link to the voice note, via
+    Twilio. Reuses the same auth as send_message: account SID + auth token
     from settings, with TWILIO_WHATSAPP_FROM as the sender.
 
     Args:
         to_number: recipient in WhatsApp format, e.g. "whatsapp:+919876543210".
                    A bare E.164 number ("+919876543210") is also accepted and
                    gets the "whatsapp:" prefix added.
-        media_url: a PUBLICLY reachable URL to the media file. Twilio fetches it
-                   server-side, so localhost / 127.0.0.1 will NOT work -- it must
-                   be an ngrok/deployed/public URL, e.g.
-                   "https://<host>/voicenotes/Uttarakhand_accident.mp3".
-        body_text: optional caption text to send alongside the media.
+        media_url: a PUBLICLY reachable URL to the media file, embedded as a
+                   tap-to-listen link in the message body (e.g. the Supabase
+                   public URL).
+        body_text: unused; kept so existing callers' positional/keyword
+                   arguments don't break.
 
     Returns:
         A result dict, e.g.
@@ -64,14 +64,16 @@ def send_whatsapp_voice_note(
     to = to_number if to_number.startswith("whatsapp:") else f"whatsapp:{to_number}"
     try:
         client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
-        params = {
-            "from_": settings.TWILIO_WHATSAPP_FROM,
-            "to": to,
-            "media_url": [media_url],
-        }
-        if body_text:
-            params["body"] = body_text
-        msg = client.messages.create(**params)
+        body = (
+            "🎙️ Your NewsBuddy voice note is ready!\n\n"
+            f"Tap to listen: {media_url}\n\n"
+            "_Reply CALL NOW for a fresh update anytime._"
+        )
+        msg = client.messages.create(
+            from_=settings.TWILIO_WHATSAPP_FROM,
+            to=to,
+            body=body,
+        )
         return {
             "success": True,
             "sid": msg.sid,
