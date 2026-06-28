@@ -426,6 +426,9 @@ def send_voice_note_now(call_id: int):
 
         to_number = user.whatsapp_number or user.phone_number
 
+        print(f"[Task] send_voice_note_now: user lookup for call {call_id} -> "
+              f"name={user.name}, city={user.city}, language={user.language}")
+
         try:
             # Unique per-request filename so concurrent CALL NOWs can't clobber
             # each other's audio; lives under the /voicenotes static mount.
@@ -453,6 +456,9 @@ def send_voice_note_now(call_id: int):
                 print(f"[Task] send_voice_note_now: language fallback to English "
                       f"for user {user.id} (lang={user.language})")
 
+            print(f"[Task] send_voice_note_now: generate_voice_note returned "
+                  f"audio_path={audio_path} for call {call_id}")
+
             # generate_voice_note returns a Supabase public URL (https://...); use it
             # directly. Fall back to the PUBLIC_BASE_URL static mount only if we got a
             # bare local path (e.g. Supabase isn't configured).
@@ -464,6 +470,9 @@ def send_voice_note_now(call_id: int):
             body_text = f"🎙️ Your NewsBuddy news update for {user.city}"
             if fallback_used:
                 body_text += " (News in English — Hindi/Nepali coming soon)"
+
+            print(f"[Task] send_voice_note_now: calling send_whatsapp_voice_note for "
+                  f"call {call_id} with media_url={media_url}")
 
             result = send_whatsapp_voice_note(to_number, media_url, body_text)
 
