@@ -90,7 +90,11 @@ def upload_to_supabase(file_path: str, filename: str) -> str:
             "Supabase storage is not configured: set SUPABASE_URL and SUPABASE_KEY."
         )
 
+    # SUPABASE_URL may have been configured with a trailing /rest/v1 (the REST
+    # API base); storage lives under the bare project URL, so strip it off.
     base_url = settings.SUPABASE_URL.rstrip("/")
+    if base_url.endswith("/rest/v1"):
+        base_url = base_url[: -len("/rest/v1")]
     upload_url = f"{base_url}/storage/v1/object/voicenotes/{filename}"
 
     with open(file_path, "rb") as f:
