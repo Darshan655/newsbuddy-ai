@@ -6,7 +6,10 @@
       "Bash(curl -s http://127.0.0.1:8421/openapi.json -o /tmp/openapi.json -w \"HTTP %{http_code}, %{size_download} bytes\\\\n\")",
       "Bash(\"../venv/Scripts/python.exe\" -c \"import json; d=json.load\\(open\\('/tmp/openapi.json'\\)\\); print\\('schema OK, paths:', len\\(d[\\\\\"paths\\\\\"]\\)\\)\")",
       "Bash(curl -s -o /dev/null -w \"POST /api/calls/schedule with bogus user -> HTTP %{http_code}\\\\n\" -X POST http://127.0.0.1:8421/api/calls/schedule -H \"Content-Type: application/json\" -d \"{\\\\\"user_id\\\\\": 999999999, \\\\\"scheduled_at\\\\\": \\\\\"2026-06-09T07:00:00\\\\\"}\")",
-      "PowerShell(netlify status 2>&1)"
+      "PowerShell(netlify status 2>&1)",
+      "Bash(git fetch *)",
+      "Bash(git rev-list *)",
+      "Bash(git push *)"
     ]
   }
 }

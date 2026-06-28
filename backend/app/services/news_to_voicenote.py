@@ -72,40 +72,48 @@ def upload_to_supabase(file_path: str, filename: str) -> str:
     Upload a generated .mp3 to the public "voicenotes" Supabase Storage bucket and
     return its public URL.
 
-    Reads the file at `file_path` as bytes and uploads it as `filename` with upsert
-    enabled, so a retried or re-run delivery overwrites the existing object instead
-    of failing on a duplicate. Credentials come from settings.SUPABASE_URL and
-    settings.SUPABASE_KEY.
+    Uses a direct PUT to the Storage REST API rather than the `supabase` Python
+    client: the client does not work correctly with the new `sb_secret_...` key
+    format, and uploads were failing silently. Upsert is enabled via the
+    "x-upsert" header so a retried or re-run delivery overwrites the existing
+    object instead of failing on a duplicate. Credentials come from
+    settings.SUPABASE_URL and settings.SUPABASE_KEY.
 
     Returns:
         The object's public URL, e.g.
         "https://<project>.supabase.co/storage/v1/object/public/voicenotes/<filename>".
     """
-    # Imported lazily so importing this module from the API/worker layers doesn't
-    # hard-require the supabase package until an upload actually runs.
-    from supabase import create_client
+    import requests
 
     if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
         raise RuntimeError(
             "Supabase storage is not configured: set SUPABASE_URL and SUPABASE_KEY."
         )
 
-    client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+    base_url = settings.SUPABASE_URL.rstrip("/")
+    upload_url = f"{base_url}/storage/v1/object/voicenotes/{filename}"
 
     with open(file_path, "rb") as f:
         audio_bytes = f.read()
 
-    bucket = client.storage.from_("voicenotes")
-    # file_options values must be strings; "x-upsert" overwrites on name conflict.
-    bucket.upload(
-        path=filename,
-        file=audio_bytes,
-        file_options={"content-type": "audio/mpeg", "x-upsert": "true"},
+    response = requests.put(
+        upload_url,
+        headers={
+            "Authorization": f"Bearer {settings.SUPABASE_KEY}",
+            "Content-Type": "audio/mpeg",
+            "x-upsert": "true",
+        },
+        data=audio_bytes,
     )
 
-    # storage3's get_public_url appends a trailing "?" (empty query); strip it so
-    # the URL handed to Twilio is clean.
-    return bucket.get_public_url(filename).rstrip("?")
+    if not response.ok:
+        print(
+            f"Supabase upload failed: {response.status_code} {response.reason} - "
+            f"{response.text}"
+        )
+        response.raise_for_status()
+
+    return f"{base_url}/storage/v1/object/public/voicenotes/{filename}"
 
 
 def _safe_filename_part(value: str) -> str:
