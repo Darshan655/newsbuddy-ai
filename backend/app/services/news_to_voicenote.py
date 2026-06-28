@@ -100,15 +100,16 @@ def upload_to_supabase(file_path: str, filename: str) -> str:
     with open(file_path, "rb") as f:
         audio_bytes = f.read()
 
-    response = requests.put(
-        upload_url,
-        headers={
-            "Authorization": f"Bearer {settings.SUPABASE_KEY}",
-            "Content-Type": "audio/mpeg",
-            "x-upsert": "true",
-        },
-        data=audio_bytes,
-    )
+    headers = {
+        "Authorization": f"Bearer {settings.SUPABASE_KEY}",
+        "Content-Type": "audio/mpeg",
+        "x-upsert": "true",
+    }
+
+    masked_headers = {**headers, "Authorization": "Bearer ***"}
+    print(f"Supabase upload: PUT {upload_url} headers={masked_headers}")
+
+    response = requests.put(upload_url, headers=headers, data=audio_bytes)
 
     if not response.ok:
         print(
