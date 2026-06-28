@@ -128,28 +128,53 @@ async def whatsapp_webhook(
     # ── CALL NOW → on-demand WhatsApp voice note ───────────────────────────────
     if message.upper() in ("CALL NOW", "CALL", "CALL ME") and user:
         # Create the CallLog already claimed ('in_progress', not 'scheduled') so
-        # the VAPI phone-call sweeper (process_pending_calls) never dials it —
-        # CALL NOW is now voice-note delivery, owned by send_voice_note_now.
+        # the VAPI phone-call sweeper (process_pending_calls) never dials it.
         call = CallLog(user_id=user.id, scheduled_at=datetime.utcnow(), status="in_progress")
         db.add(call)
         db.commit()
 
         try:
-            from app.tasks.tasks import send_voice_note_now
-            send_voice_note_now.delay(call.id)
-            reply = (
-                f"✅ Got it, {user.name}! Generating your news now — "
-                f"it'll arrive as a voice note in a moment."
-            )
-        except Exception as e:
-            # Broker down / enqueue failed: don't leave a false ack or a stuck row.
-            call.status = "failed"
-            call.error_message = f"Failed to enqueue voice-note task: {e}"
-            db.commit()
-            print(f"[Webhook] CALL NOW enqueue failed for user {user.id}: {e}")
-            reply = "😕 Sorry, I'm having trouble right now — please try again in a moment."
+            from app.core.config import VOICENOTES_DIR
+            from app.services.news_to_voicenote import generate_voice_note
 
-        return _twilio_twiml_response(reply)
+            # Unique per-request filename so concurrent CALL NOWs can't clobber
+            # each other's audio; lives under the /voicenotes static mount.
+            output_path = str(VOICENOTES_DIR / f"callnow_{call.id}.mp3")
+
+            try:
+                audio_url = generate_voice_note(
+                    location=user.city,
+                    topic=None,                      # general city news (per design)
+                    user_name=user.name,
+                    language=user.language,
+                    output_path=output_path,
+                )
+            except NotImplementedError:
+                # Hindi/Nepali templates are still stubbed -> deliver in English.
+                audio_url = generate_voice_note(
+                    location=user.city,
+                    topic=None,
+                    user_name=user.name,
+                    language="en",
+                    output_path=output_path,
+                )
+
+            call.status = "completed"
+            call.ended_at = datetime.utcnow()
+            db.commit()
+
+            reply = f"🎙️ Here's your NewsBuddy update for {user.city}, {user.name}!"
+            return _twilio_twiml_media_response(reply, audio_url)
+
+        except Exception as e:
+            # News fetch / TTS / upload failure: record it and reply with a plain
+            # apology instead of a broken <Media> reply.
+            call.status = "failed"
+            call.error_message = str(e)[:1000]
+            db.commit()
+            print(f"[Webhook] CALL NOW generation failed for user {user.id}: {e}")
+            reply = "😕 Sorry, I'm having trouble right now — please try again in a moment."
+            return _twilio_twiml_response(reply)
 
     # ── Default ────────────────────────────────────────────────────────────────
     if not user:
@@ -238,5 +263,20 @@ def _twilio_twiml_response(message: str):
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Message>{message}</Message>
+</Response>"""
+    return Response(content=twiml, media_type="application/xml")
+
+
+def _twilio_twiml_media_response(message: str, media_url: str):
+    """Return a Twilio TwiML response that replies with text + a media
+    attachment (e.g. the generated voice note), as a direct reply to the
+    incoming WhatsApp message."""
+    from fastapi.responses import Response
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Message>
+        <Body>{message}</Body>
+        <Media>{media_url}</Media>
+    </Message>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
