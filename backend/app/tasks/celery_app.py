@@ -26,6 +26,7 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,       # Don't grab more tasks than needed
     task_soft_time_limit=120,           # 2 min soft limit per task
     task_time_limit=180,                # 3 min hard limit
+    broker_heartbeat=120,
 )
 
 # ── Periodic schedule (Celery Beat) ───────────────────────────────────────────
@@ -40,9 +41,9 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.tasks.reset_weekly_call_counters",
         "schedule": crontab(day_of_week=1, hour=0, minute=0),
     },
-    # Check for missed calls and notify via WhatsApp every 30 min
+    # Check for missed calls and notify via WhatsApp every 6 hours
     "handle-missed-calls": {
         "task": "app.tasks.tasks.handle_missed_calls",
-        "schedule": crontab(minute="*/30"),
+        "schedule": crontab(minute=0, hour="*/6"),
     },
 }
