@@ -87,6 +87,7 @@ async def whatsapp_webhook(
                     f"⏰ Daily call: 7:00 AM\n\n"
                     f"You'll get your first call tomorrow morning!\n"
                     f"Reply *TIME 7:00 AM* to change your call time.\n"
+                    f"Reply *CITY Pokhara* to change your city.\n"
                     f"Reply *NEWS TYPE business, crime* to set your topics.\n"
                     f"Reply *HELP* for all options."
                 )
@@ -147,6 +148,25 @@ async def whatsapp_webhook(
                 reply += f"\n(Skipped unrecognised: {', '.join(invalid)})"
         return _twilio_twiml_response(reply)
 
+    # ── View city ──────────────────────────────────────────────────────────────
+    if message.upper() == "CITY" and user:
+        if user.city and user.city.strip():
+            reply = f"📍 Your city is currently set to {user.city}."
+        else:
+            reply = "📍 You haven't set your city yet. Reply CITY Nepalgunj to set it."
+        return _twilio_twiml_response(reply)
+
+    # ── Set city ───────────────────────────────────────────────────────────────
+    if message.upper().startswith("CITY ") and user:
+        new_city = message[5:].strip()
+        if not new_city:
+            reply = "❌ Please include a city name, e.g. CITY Nepalgunj."
+        else:
+            user.city = new_city
+            db.commit()
+            reply = f"📍 Got it! You'll now get news for {new_city}."
+        return _twilio_twiml_response(reply)
+
     # ── HELP ───────────────────────────────────────────────────────────────────
     if message.upper() == "HELP":
         reply = (
@@ -155,6 +175,7 @@ async def whatsapp_webhook(
             "⏰ *TIME* — See your daily call time\n"
             "⏰ *TIME 7:00 AM* — Change your daily call time\n"
             "🔄 *CALL IN 15* — Call me in 15 minutes\n"
+            "📍 *CITY* — See your current city\n"
             "📍 *CITY Pokhara* — Change your city\n"
             "📰 *NEWS TYPE* — See your news topics\n"
             "📰 *NEWS TYPE business, crime* — Change your news topics\n"
