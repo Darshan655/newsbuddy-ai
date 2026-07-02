@@ -1,741 +1,612 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>NewsBuddy AI — Every morning, your phone rings with the news</title>
-<meta name="description" content="NewsBuddy AI calls your phone every morning and an AI voice reads you the local news from Nepalgunj — in Hindi, Nepali, or English. No smartphone, no app. Sign up on WhatsApp." />
-<meta name="theme-color" content="#14161C" />
-
-<!-- Social sharing -->
-<meta property="og:title" content="NewsBuddy AI — your news, by phone call" />
-<meta property="og:description" content="An AI voice calls you every morning with the local news, in your own language. No smartphone needed. Sign up on WhatsApp." />
-<meta property="og:type" content="website" />
-
-<!-- Favicon: a small rising sun -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314161C'/%3E%3Ccircle cx='16' cy='21' r='6' fill='%23F2A33C'/%3E%3Cg stroke='%23F2A33C' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='16' y1='6' x2='16' y2='9'/%3E%3Cline x1='6' y1='12' x2='8' y2='13.5'/%3E%3Cline x1='26' y1='12' x2='24' y2='13.5'/%3E%3C/g%3E%3Cline x1='4' y1='27' x2='28' y2='27' stroke='%236FA287' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E" />
-
-<!-- Fonts: Fraunces (serif headlines, variable opsz + wght + ital) + Hind (Latin + Devanagari) -->
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Hind:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NewsBuddy — News that finds you</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Hind:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
 <style>
-  /* ---------- Palette & tokens ---------- */
   :root{
-    --bg:        #14161C;   /* pre-dawn sky */
-    --bg-soft:   #1B1E27;
-    --surface:   rgba(246,241,231,0.045);
-    --surface-2: rgba(246,241,231,0.07);
-    --cream:     #F6F1E7;   /* warm light */
-    --cream-dim: rgba(246,241,231,0.74);
-    --cream-faint: rgba(246,241,231,0.52);
-    --marigold:  #F2A33C;   /* first light */
-    --marigold-ink: #14161C;
-    --marigold-soft: rgba(242,163,60,0.14);
-    --sage:      #6FA287;   /* verified local */
-    --sage-soft: rgba(111,162,135,0.16);
-    --terracotta:#D6603F;   /* breaking */
-    --terracotta-soft: rgba(214,96,63,0.16);
-    --line:      rgba(246,241,231,0.10);
-    --line-soft: rgba(246,241,231,0.06);
-
-    --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
-    --sans:  'Hind', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-
-    --maxw: 1120px;
-    --radius: 18px;
-    --radius-lg: 26px;
+    --indigo-dusk:#1B1E3D;
+    --night-deep:#0E1026;
+    --brass:#E0983F;
+    --brass-soft:#F0B368;
+    --parchment:#F3ECDF;
+    --teal:#3E6259;
+    --coral:#E4572E;
+    --line: rgba(243,236,223,0.14);
   }
-
-  /* ---------- Reset / base ---------- */
-  *{ box-sizing:border-box; margin:0; padding:0; }
-  html{ -webkit-text-size-adjust:100%; }
-  @media (prefers-reduced-motion: no-preference){
-    html{ scroll-behavior:smooth; }
-  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
   body{
-    font-family:var(--sans);
-    background:var(--bg);
-    color:var(--cream);
-    line-height:1.6;
-    font-size:clamp(16px, 1rem + 0.2vw, 18px);
-    -webkit-font-smoothing:antialiased;
-    text-rendering:optimizeLegibility;
+    background: radial-gradient(ellipse 120% 80% at 50% -10%, #2A2E58 0%, var(--indigo-dusk) 45%, var(--night-deep) 100%);
+    color: var(--parchment);
+    font-family:'Hind', sans-serif;
+    min-height:100vh;
     overflow-x:hidden;
   }
-
-  /* subtle film grain over the whole page */
-  body::after{
-    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    opacity:0.04; mix-blend-mode:overlay;
-  }
-
-  img,svg{ display:block; max-width:100%; }
-  a{ color:inherit; text-decoration:none; }
-  ul{ list-style:none; }
-
-  .wrap{ width:min(100% - 40px, var(--maxw)); margin-inline:auto; position:relative; z-index:1; }
-
-  ::selection{ background:var(--marigold); color:var(--marigold-ink); }
-  :focus-visible{ outline:2.5px solid var(--marigold); outline-offset:3px; border-radius:6px; }
-
-  .skip{
-    position:absolute; left:-999px; top:0; z-index:100;
-    background:var(--marigold); color:var(--marigold-ink); padding:10px 16px;
-    border-radius:0 0 12px 0; font-weight:600;
-  }
-  .skip:focus{ left:0; }
-
-  /* ---------- Typography helpers ---------- */
-  .serif{ font-family:var(--serif); font-optical-sizing:auto; }
-  .eyebrow{
-    font-family:var(--sans); font-weight:600; font-size:0.82rem;
-    letter-spacing:0.14em; text-transform:uppercase;
-    color:var(--marigold);
-    display:inline-flex; align-items:center; gap:10px;
-  }
-  .eyebrow::before{ content:""; width:26px; height:1px; background:var(--marigold); opacity:0.6; }
-
-  h1,h2,h3{ font-family:var(--serif); line-height:1.08; font-optical-sizing:auto; }
-  h1{
-    font-size:clamp(2.5rem, 1.6rem + 4.4vw, 4.6rem);
-    font-variation-settings:'opsz' 144,'wght' 500;
-    letter-spacing:-0.015em;
-  }
-  h1 em{ font-style:italic; font-variation-settings:'opsz' 144,'wght' 460; color:var(--marigold); }
-  h2{
-    font-size:clamp(2rem, 1.4rem + 2.4vw, 3rem);
-    font-variation-settings:'opsz' 60,'wght' 560;
-    letter-spacing:-0.01em;
-  }
-  h3{ font-size:1.3rem; font-variation-settings:'opsz' 28,'wght' 600; }
-
-  .lead{ color:var(--cream-dim); font-size:clamp(1.05rem,1rem + 0.45vw,1.28rem); max-width:60ch; }
-
-  /* ---------- Buttons ---------- */
-  .btn{
-    --pad-y:14px; --pad-x:24px;
-    display:inline-flex; align-items:center; justify-content:center; gap:10px;
-    padding:var(--pad-y) var(--pad-x);
-    border-radius:999px; border:1px solid transparent;
-    font-family:var(--sans); font-weight:600; font-size:1rem; cursor:pointer;
-    transition:transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
-    will-change:transform;
-  }
-  .btn svg{ width:20px; height:20px; flex:none; }
-  .btn-primary{
-    background:var(--marigold); color:var(--marigold-ink);
-    box-shadow:0 10px 30px -10px rgba(242,163,60,0.6);
-  }
-  .btn-primary:hover{ transform:translateY(-2px); box-shadow:0 16px 40px -12px rgba(242,163,60,0.75); background:#f6b257; }
-  .btn-ghost{
-    background:transparent; color:var(--cream); border-color:var(--line);
-  }
-  .btn-ghost:hover{ border-color:var(--cream-dim); transform:translateY(-2px); background:var(--surface); }
-  .btn-block{ width:100%; }
   @media (prefers-reduced-motion: reduce){
-    .btn:hover{ transform:none; }
+    *{animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important;}
   }
 
-  .pill{
-    display:inline-flex; align-items:center; gap:7px;
-    padding:6px 13px; border-radius:999px; font-size:0.82rem; font-weight:500;
-    background:var(--surface); border:1px solid var(--line); color:var(--cream-dim);
+  /* ---------- NAV ---------- */
+  nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:28px clamp(20px,5vw,64px);
+    position:relative; z-index:20;
   }
-  .pill.sage{ color:var(--sage); background:var(--sage-soft); border-color:transparent; }
-  .pill .dot{ width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .logo{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:900; font-size:24px; letter-spacing:0.5px;
+    color:var(--parchment); text-transform:uppercase;
+  }
+  .logo span{color:var(--brass);}
+  .nav-link{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:14px; color:var(--parchment); opacity:0.75;
+    text-decoration:none; border-bottom:1px solid transparent;
+  }
+  .nav-link:hover{opacity:1; border-color:var(--brass);}
 
-  /* ---------- Nav ---------- */
-  .nav{
-    position:sticky; top:0; z-index:50;
-    background:rgba(20,22,28,0.72);
-    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-    border-bottom:1px solid var(--line-soft);
-  }
-  .nav-inner{ display:flex; align-items:center; justify-content:space-between; height:66px; }
-  .brand{ display:flex; align-items:center; gap:11px; font-weight:600; font-size:1.05rem; }
-  .brand .logo{ width:32px; height:32px; flex:none; }
-  .brand b{ font-weight:700; }
-  .nav-links{ display:none; gap:30px; }
-  .nav-links a{ color:var(--cream-dim); font-weight:500; font-size:0.95rem; transition:color .15s; }
-  .nav-links a:hover{ color:var(--cream); }
-  .nav .btn{ --pad-y:9px; --pad-x:16px; font-size:0.92rem; }
-  .nav .btn span{ display:none; }
-  @media (min-width:720px){
-    .nav-links{ display:flex; }
-    .nav .btn span{ display:inline; }
-  }
-
-  /* ---------- Sections ---------- */
-  section{ scroll-margin-top:84px; }
-  .section-pad{ padding-block:clamp(70px,9vw,120px); }
-  .section-head{ max-width:62ch; margin-bottom:clamp(40px,6vw,64px); }
-  .section-head .lead{ margin-top:18px; }
-
-  /* ---------- Hero ---------- */
-  .hero{ position:relative; overflow:hidden; padding-block:clamp(48px,7vw,92px) clamp(60px,8vw,110px); }
-  .hero-glow{
-    position:absolute; inset:0; z-index:0; pointer-events:none;
-    background:
-      radial-gradient(125% 85% at 50% 118%, rgba(242,163,60,0.30), rgba(214,96,63,0.10) 34%, transparent 60%),
-      radial-gradient(80% 50% at 80% -10%, rgba(111,162,135,0.10), transparent 60%);
-  }
-  /* the sun, just under the horizon */
-  .hero-sun{
-    position:absolute; left:50%; bottom:-140px; transform:translateX(-50%);
-    width:520px; height:520px; max-width:120vw; border-radius:50%;
-    background:radial-gradient(circle, rgba(242,163,60,0.55), rgba(242,163,60,0.12) 45%, transparent 68%);
-    filter:blur(18px); z-index:0; pointer-events:none;
-  }
-  @media (prefers-reduced-motion: no-preference){
-    .hero-sun{ animation:sun-breathe 8s ease-in-out infinite; }
-    @keyframes sun-breathe{ 0%,100%{ opacity:0.85; } 50%{ opacity:1; } }
-  }
-
-  .hero-grid{ position:relative; z-index:1; display:grid; gap:clamp(44px,6vw,64px); align-items:center; }
-  @media (min-width:920px){
-    .hero-grid{ grid-template-columns:1.05fr 0.95fr; }
-  }
-  .hero-copy h1{ margin:18px 0 22px; }
-  .hero-cta{ display:flex; flex-wrap:wrap; gap:14px; margin:30px 0 18px; }
-  .hero-note{ color:var(--cream-faint); font-size:0.9rem; }
-  .hero-trust{ display:flex; flex-wrap:wrap; gap:10px; margin-top:26px; }
-
-  /* ---------- Phone mockup ---------- */
-  .phone-stage{ display:flex; justify-content:center; }
-  .phone{
+  /* ---------- HERO ---------- */
+  .hero{
     position:relative;
-    width:clamp(248px, 74vw, 304px);
-    aspect-ratio:300 / 624;
-    border-radius:46px;
-    padding:13px;
-    background:linear-gradient(160deg,#23262F,#0E0F14 60%);
-    border:1px solid rgba(246,241,231,0.12);
-    box-shadow:
-      0 40px 80px -28px rgba(0,0,0,0.8),
-      0 0 0 1px rgba(0,0,0,0.4),
-      0 0 60px -10px rgba(242,163,60,0.22);
-  }
-  .phone-screen{
-    position:relative; height:100%; border-radius:34px; overflow:hidden;
-    background:
-      radial-gradient(120% 60% at 50% 120%, rgba(242,163,60,0.18), transparent 55%),
-      linear-gradient(180deg,#15171E,#0D0E13);
+    padding: 40px clamp(20px,5vw,64px) 20px;
     display:flex; flex-direction:column; align-items:center;
-    padding:18px 18px 22px;
-    color:var(--cream);
+    text-align:center;
+    min-height: 70vh;
+    justify-content:center;
   }
-  .notch{
-    position:absolute; top:11px; left:50%; transform:translateX(-50%);
-    width:84px; height:7px; border-radius:99px; background:rgba(0,0,0,0.55);
-  }
-  .statusbar{
-    width:100%; display:flex; justify-content:space-between; align-items:center;
-    font-size:0.72rem; color:var(--cream-dim); letter-spacing:0.02em; margin-top:6px;
-  }
-  .statusbar .sig{ display:flex; gap:3px; align-items:flex-end; height:11px; }
-  .statusbar .sig i{ width:3px; background:var(--cream-dim); border-radius:1px; }
-  .statusbar .sig i:nth-child(1){ height:4px } .statusbar .sig i:nth-child(2){ height:6px }
-  .statusbar .sig i:nth-child(3){ height:8px } .statusbar .sig i:nth-child(4){ height:11px }
-
-  .incoming{
-    margin-top:30px; font-size:0.78rem; letter-spacing:0.16em; text-transform:uppercase;
-    color:var(--marigold); font-weight:600;
+  .stage{
+    position:relative;
+    width:100%; max-width:640px;
+    height:340px;
+    display:flex; align-items:center; justify-content:center;
+    perspective: 1000px;
+    margin-bottom:8px;
   }
 
-  .avatar{
-    position:relative; margin-top:26px; width:96px; height:96px; flex:none;
-    display:grid; place-items:center;
+  /* Megaphone */
+  .mic-wrap{
+    position:relative;
+    width:150px; height:150px;
+    animation: float-mic 6s ease-in-out infinite;
+    transform-style:preserve-3d;
+    z-index:5;
   }
-  .avatar-core{
-    width:84px; height:84px; border-radius:50%;
-    background:radial-gradient(circle at 35% 30%, #2a2d37, #14161C);
-    border:1px solid rgba(242,163,60,0.4);
-    display:grid; place-items:center; z-index:2;
-    box-shadow:0 0 24px -6px rgba(242,163,60,0.5);
+  @keyframes float-mic{
+    0%,100%{ transform: translateY(0) rotateY(-8deg) rotateZ(-3deg); }
+    50%{ transform: translateY(-18px) rotateY(8deg) rotateZ(3deg); }
   }
-  .avatar-core svg{ width:38px; height:38px; color:var(--marigold); }
+  .mic-wrap svg{
+    width:100%; height:100%;
+    filter: drop-shadow(0 30px 40px rgba(0,0,0,0.45)) drop-shadow(0 6px 12px rgba(224,152,63,0.25));
+  }
+
+  /* Orbiting rotary phone */
+  .phone-wrap{
+    position:absolute;
+    width:76px; height:76px;
+    top:8%; right:6%;
+    animation: orbit-phone 9s ease-in-out infinite;
+    z-index:4;
+  }
+  @keyframes orbit-phone{
+    0%,100%{ transform: translate(0,0) rotate(-6deg); }
+    50%{ transform: translate(-14px,24px) rotate(10deg); }
+  }
+  .phone-wrap svg{
+    width:100%; height:100%;
+    filter: drop-shadow(0 18px 22px rgba(0,0,0,0.4));
+    opacity:0.92;
+  }
+
+  .phone-wrap-2{
+    position:absolute;
+    width:52px; height:52px;
+    bottom:10%; left:8%;
+    animation: orbit-phone-2 7.5s ease-in-out infinite;
+    z-index:4;
+  }
+  @keyframes orbit-phone-2{
+    0%,100%{ transform: translate(0,0) rotate(8deg); }
+    50%{ transform: translate(16px,-16px) rotate(-10deg); }
+  }
+  .phone-wrap-2 svg{
+    width:100%; height:100%;
+    filter: drop-shadow(0 14px 16px rgba(0,0,0,0.4));
+    opacity:0.85;
+  }
+
+  /* Sound rings */
   .ring{
-    position:absolute; inset:6px; border-radius:50%;
-    border:2px solid var(--marigold); opacity:0;
+    position:absolute;
+    border:1.5px solid var(--brass);
+    border-radius:50%;
+    opacity:0;
+    top:50%; left:50%;
+    transform: translate(-50%,-50%);
   }
-  @media (prefers-reduced-motion: no-preference){
-    .ring{ animation:ring-pulse 2.6s cubic-bezier(.2,.6,.3,1) infinite; }
-    .ring.r2{ animation-delay:.85s; }
-    .ring.r3{ animation-delay:1.7s; }
-    @keyframes ring-pulse{
-      0%{ transform:scale(.62); opacity:.7; }
-      80%{ opacity:.05; }
-      100%{ transform:scale(2.15); opacity:0; }
-    }
-  }
-  /* reduced motion: a calm static halo instead of pulsing */
-  @media (prefers-reduced-motion: reduce){
-    .ring.r1{ opacity:.5; transform:scale(1.25); }
-    .ring.r2, .ring.r3{ display:none; }
+  .ring1{width:180px; height:180px; animation: ring-pulse 3.6s ease-out infinite;}
+  .ring2{width:180px; height:180px; animation: ring-pulse 3.6s ease-out infinite 1.2s;}
+  .ring3{width:180px; height:180px; animation: ring-pulse 3.6s ease-out infinite 2.4s;}
+  @keyframes ring-pulse{
+    0%{ width:120px; height:120px; opacity:0.5; }
+    100%{ width:420px; height:420px; opacity:0; }
   }
 
-  .caller-name{ font-family:var(--serif); font-size:1.85rem; font-variation-settings:'opsz' 40,'wght' 580; margin-top:22px; }
-  .caller-sub{ color:var(--cream-dim); font-size:0.85rem; margin-top:4px; }
+  /* Flying words */
+  .word{
+    position:absolute;
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:900;
+    font-size: clamp(20px, 4vw, 30px);
+    letter-spacing: 2px;
+    color: var(--brass-soft);
+    white-space:nowrap;
+    opacity:0;
+    text-transform:uppercase;
+    top:50%; left:50%;
+  }
+  .word-yesterday{ animation: fly-out-left 4.5s ease-in infinite; animation-delay:0.2s; }
+  .word-today{ animation: fly-out-up 4.5s ease-in infinite; animation-delay:1.7s; color:var(--coral); }
+  .word-tomorrow{ animation: fly-out-right 4.5s ease-in infinite; animation-delay:3.2s; }
 
-  /* live news ticker on the call screen */
-  .ticker{
-    margin-top:20px; width:100%;
-    display:flex; align-items:center; gap:9px;
-    padding:10px 12px; border-radius:13px;
-    background:rgba(246,241,231,0.05); border:1px solid var(--line-soft);
-    min-height:62px;
+  @keyframes fly-out-left{
+    0%{ transform: translate(-50%,-50%) scale(0.6); opacity:0; }
+    15%{ opacity:1; transform: translate(-50%,-50%) scale(1); }
+    100%{ transform: translate(-340%,-120%) scale(1.15) rotate(-8deg); opacity:0; }
   }
-  .ticker-tag{
-    flex:none; font-size:0.62rem; font-weight:600; letter-spacing:0.04em;
-    padding:4px 8px; border-radius:7px; text-transform:uppercase;
-    background:var(--sage-soft); color:var(--sage); white-space:nowrap;
+  @keyframes fly-out-up{
+    0%{ transform: translate(-50%,-50%) scale(0.6); opacity:0; }
+    15%{ opacity:1; transform: translate(-50%,-50%) scale(1); }
+    100%{ transform: translate(-50%,-320%) scale(1.2); opacity:0; }
   }
-  .ticker.breaking .ticker-tag{ background:var(--terracotta-soft); color:var(--terracotta); }
-  .ticker-text{
-    font-size:0.86rem; line-height:1.35; color:var(--cream);
-    transition:opacity .45s ease;
-  }
-  @media (prefers-reduced-motion: reduce){ .ticker-text{ transition:none; } }
-
-  .call-actions{ margin-top:auto; display:flex; gap:46px; padding-top:18px; }
-  .call-btn{ width:54px; height:54px; border-radius:50%; display:grid; place-items:center; }
-  .call-btn svg{ width:25px; height:25px; color:#fff; }
-  .call-btn.decline{ background:var(--terracotta); transform:rotate(135deg); }
-  .call-btn.accept{ background:#3FB868; }
-  @media (prefers-reduced-motion: no-preference){
-    .call-btn.accept{ animation:accept-glow 1.6s ease-in-out infinite; }
-    @keyframes accept-glow{
-      0%,100%{ box-shadow:0 0 0 0 rgba(63,184,104,0.45); }
-      50%{ box-shadow:0 0 0 12px rgba(63,184,104,0); }
-    }
+  @keyframes fly-out-right{
+    0%{ transform: translate(-50%,-50%) scale(0.6); opacity:0; }
+    15%{ opacity:1; transform: translate(-50%,-50%) scale(1); }
+    100%{ transform: translate(240%,-120%) scale(1.15) rotate(8deg); opacity:0; }
   }
 
-  /* ---------- How it works ---------- */
-  .steps{ display:grid; gap:18px; }
-  @media (min-width:600px){ .steps{ grid-template-columns:repeat(2,1fr); } }
-  @media (min-width:1000px){ .steps{ grid-template-columns:repeat(4,1fr); } }
-  .step{
-    background:var(--surface); border:1px solid var(--line-soft);
-    border-radius:var(--radius); padding:26px 22px 28px;
-    transition:transform .2s ease, border-color .2s ease, background .2s ease;
+  h1{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:900;
+    font-size: clamp(38px, 6.5vw, 68px);
+    line-height:0.98;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    max-width:820px;
+    margin-top:4px;
   }
-  .step:hover{ transform:translateY(-4px); border-color:var(--line); background:var(--surface-2); }
-  .step .num{
-    font-family:var(--serif); font-variation-settings:'opsz' 144,'wght' 430;
-    font-size:3.1rem; line-height:1; color:var(--marigold); display:block;
+  h1 .accent{color:var(--brass);}
+  .sub{
+    font-family:'Hind', sans-serif;
+    font-size: clamp(15px,2vw,18px);
+    color: var(--parchment);
+    opacity:0.78;
+    max-width:480px;
+    margin:18px auto 0;
+    font-weight:400;
   }
-  .step h3{ margin:16px 0 9px; }
-  .step p{ color:var(--cream-dim); font-size:0.96rem; }
-  @media (prefers-reduced-motion: reduce){ .step:hover{ transform:none; } }
 
-  /* ---------- Languages ---------- */
-  .langs-grid{ display:grid; gap:18px; }
-  @media (min-width:760px){ .langs-grid{ grid-template-columns:repeat(3,1fr); } }
-  .lang{
-    background:var(--surface); border:1px solid var(--line-soft);
-    border-radius:var(--radius-lg); padding:30px 26px 28px;
-    transition:transform .2s ease, border-color .2s ease;
+  /* ---------- LOGIN CARD ---------- */
+  .card-section{
+    display:flex; justify-content:center;
+    padding: 30px clamp(20px,5vw,64px) 90px;
   }
-  .lang:hover{ transform:translateY(-4px); border-color:var(--marigold); }
-  .lang-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
-  .lang-native{ font-size:2.1rem; font-weight:700; line-height:1; }
-  .lang-rom{ color:var(--cream-faint); font-size:0.85rem; letter-spacing:0.04em; text-transform:uppercase; }
-  .lang-sample{
-    margin-top:20px; padding:16px 16px 16px 18px; border-radius:13px;
-    background:var(--bg); border-left:3px solid var(--marigold);
-    color:var(--cream-dim); font-size:0.98rem;
+  .card{
+    width:100%; max-width:400px;
+    background: rgba(243,236,223,0.04);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding: 36px 32px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.35);
   }
-  .lang-listen{ margin-top:18px; display:inline-flex; align-items:center; gap:9px; color:var(--sage); font-size:0.86rem; font-weight:500; }
-  .lang-listen .bars{ display:flex; gap:2px; align-items:flex-end; height:14px; }
-  .lang-listen .bars i{ width:3px; background:var(--sage); border-radius:2px; }
-  .lang-listen .bars i:nth-child(1){ height:6px } .lang-listen .bars i:nth-child(2){ height:13px }
-  .lang-listen .bars i:nth-child(3){ height:9px } .lang-listen .bars i:nth-child(4){ height:14px }
-  .lang-listen .bars i:nth-child(5){ height:7px }
-  @media (prefers-reduced-motion: reduce){ .lang:hover{ transform:none; } }
+  .card-eyebrow{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:12px; letter-spacing:2px; text-transform:uppercase;
+    color:var(--brass); margin-bottom:8px; display:block;
+  }
+  .card h2{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:900; font-size:28px; text-transform:uppercase;
+    margin-bottom:22px; letter-spacing:0.3px;
+  }
+  .field{ margin-bottom:16px; }
+  .field label{
+    display:block; font-family:'Space Grotesk', sans-serif;
+    font-size:12px; letter-spacing:1px; text-transform:uppercase;
+    color: var(--parchment); opacity:0.6; margin-bottom:7px;
+  }
+  .field input{
+    width:100%;
+    background: rgba(14,16,38,0.55);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:13px 14px;
+    color:var(--parchment);
+    font-family:'Hind', sans-serif;
+    font-size:15px;
+    outline:none;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .field input::placeholder{ color: rgba(243,236,223,0.35); }
+  .field input:focus{
+    border-color:var(--brass);
+    background: rgba(14,16,38,0.8);
+  }
+  .field input:focus-visible{
+    outline:2px solid var(--brass);
+    outline-offset:2px;
+  }
+  .phone-row{ display:flex; gap:8px; }
+  .phone-row .code{
+    width:76px; flex-shrink:0;
+    text-align:center;
+    font-family:'Space Grotesk', sans-serif;
+  }
+  .cta{
+    width:100%;
+    background: var(--coral);
+    color: var(--parchment);
+    border:none;
+    border-radius:10px;
+    padding:15px;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600; font-size:15px;
+    letter-spacing:0.3px;
+    cursor:pointer;
+    margin-top:6px;
+    transition: transform 0.12s ease, background 0.15s ease;
+  }
+  .cta:hover{ background:#f0663d; transform: translateY(-1px); }
+  .cta:focus-visible{ outline:2px solid var(--brass-soft); outline-offset:3px; }
+  .cta:active{ transform: translateY(0); }
 
-  /* ---------- Pricing ---------- */
-  .price-grid{ display:grid; gap:20px; align-items:start; }
-  @media (min-width:860px){ .price-grid{ grid-template-columns:repeat(3,1fr); } }
-  .plan{
-    position:relative; background:var(--surface); border:1px solid var(--line-soft);
-    border-radius:var(--radius-lg); padding:30px 26px 30px;
-    display:flex; flex-direction:column; gap:18px;
-    transition:transform .2s ease, border-color .2s ease;
+  .card-foot{
+    margin-top:16px;
+    font-size:13px;
+    color:var(--parchment);
+    opacity:0.55;
+    line-height:1.5;
+    text-align:center;
   }
-  .plan:hover{ transform:translateY(-4px); }
-  .plan.featured{
-    border-color:var(--marigold);
-    background:linear-gradient(180deg, rgba(242,163,60,0.08), var(--surface) 40%);
-    box-shadow:0 30px 60px -34px rgba(242,163,60,0.5);
-  }
-  @media (min-width:860px){ .plan.featured{ transform:translateY(-14px); } .plan.featured:hover{ transform:translateY(-18px); } }
-  .plan-tag{
-    position:absolute; top:-13px; left:50%; transform:translateX(-50%);
-    background:var(--marigold); color:var(--marigold-ink);
-    font-size:0.74rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
-    padding:6px 14px; border-radius:999px; white-space:nowrap;
-  }
-  .plan-name{ font-size:1.15rem; font-weight:600; }
-  .plan-price{ display:flex; align-items:baseline; gap:6px; }
-  .plan-price .amt{ font-family:var(--serif); font-variation-settings:'opsz' 144,'wght' 600; font-size:3rem; line-height:1; }
-  .plan-price .per{ color:var(--cream-faint); font-size:0.95rem; }
-  .plan-blurb{ color:var(--cream-dim); font-size:0.95rem; }
-  .plan-features{ display:flex; flex-direction:column; gap:12px; }
-  .plan-features li{ display:flex; gap:11px; align-items:flex-start; font-size:0.96rem; color:var(--cream-dim); }
-  .plan-features svg{ width:19px; height:19px; flex:none; margin-top:3px; color:var(--sage); }
-  .plan-features li.hot svg{ color:var(--terracotta); }
-  .plan-features li.hot{ color:var(--cream); }
-  .plan .btn{ margin-top:auto; }
-  @media (prefers-reduced-motion: reduce){ .plan:hover, .plan.featured:hover{ transform:none; } }
+  .card-foot b{ color:var(--brass-soft); opacity:1; font-weight:600; }
 
-  /* ---------- Footer ---------- */
-  .footer-cta{
-    text-align:center; border-radius:var(--radius-lg);
-    background:
-      radial-gradient(100% 130% at 50% 0%, rgba(242,163,60,0.16), transparent 60%),
-      var(--surface);
-    border:1px solid var(--line); padding:clamp(40px,6vw,64px) 24px;
+  footer{
+    text-align:center;
+    padding: 24px 20px 40px;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:12px;
+    color: var(--parchment);
+    opacity:0.4;
+    letter-spacing:0.5px;
   }
-  .footer-cta h2{ margin-bottom:14px; }
-  .footer-cta p{ color:var(--cream-dim); max-width:48ch; margin:0 auto 28px; }
-  footer{ padding-block:48px 56px; }
-  .foot-bottom{
-    margin-top:46px; padding-top:26px; border-top:1px solid var(--line-soft);
-    display:flex; flex-wrap:wrap; gap:18px 30px; align-items:center; justify-content:space-between;
-    color:var(--cream-faint); font-size:0.88rem;
-  }
-  .foot-links{ display:flex; gap:22px; flex-wrap:wrap; }
-  .foot-links a:hover{ color:var(--cream); }
 
-  /* ---------- Scroll reveal (progressive, JS-gated) ---------- */
-  .js .reveal{ opacity:0; transform:translateY(20px); transition:opacity .7s ease, transform .7s ease; }
-  .js .reveal.in{ opacity:1; transform:none; }
-  @media (prefers-reduced-motion: reduce){
-    .js .reveal{ opacity:1; transform:none; transition:none; }
+  /* ---------- Internal-testing gate + banner (ported from signup.html) ---------- */
+  .gate-banner{
+    background: rgba(224,152,63,0.09);
+    border:1px solid rgba(224,152,63,0.30);
+    border-radius:12px;
+    padding:12px 14px;
+    margin-bottom:20px;
+    font-size:13px; line-height:1.5;
+    color: rgba(243,236,223,0.75);
   }
+  .gate-banner .banner-label{
+    display:flex; align-items:center; gap:7px;
+    color:var(--brass);
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600; font-size:11px;
+    letter-spacing:1px; text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .gate-banner .banner-label svg{ width:14px; height:14px; flex:none; }
+  .gate-banner b{ color:var(--brass-soft); font-weight:600; }
+  .gate-field input{ border-color: rgba(224,152,63,0.25); }
+  .gate-field input:focus{ border-color:var(--brass); }
+
+  /* ---------- Inline form error ---------- */
+  .form-error{
+    display:none;
+    background: rgba(228,87,46,0.14);
+    border:1px solid rgba(228,87,46,0.35);
+    border-radius:10px;
+    padding:11px 14px;
+    font-size:14px; line-height:1.5;
+    color:var(--parchment);
+    margin-bottom:14px;
+  }
+  .form-error b{
+    display:block; color:var(--coral);
+    font-family:'Space Grotesk', sans-serif;
+    font-size:12px; letter-spacing:0.5px; margin-bottom:2px;
+  }
+  .cta:disabled{ opacity:0.55; cursor:not-allowed; transform:none; }
 </style>
 </head>
 <body>
-<a class="skip" href="#main">Skip to content</a>
 
-<!-- ================= NAV ================= -->
-<header class="nav">
-  <div class="wrap nav-inner">
-    <a class="brand" href="#top" aria-label="NewsBuddy AI home">
-      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
-        <rect width="32" height="32" rx="8" fill="#1B1E27"/>
-        <circle cx="16" cy="21" r="6" fill="#F2A33C"/>
-        <g stroke="#F2A33C" stroke-width="2" stroke-linecap="round">
-          <line x1="16" y1="6" x2="16" y2="9"/>
-          <line x1="6" y1="12" x2="8" y2="13.5"/>
-          <line x1="26" y1="12" x2="24" y2="13.5"/>
-        </g>
-        <line x1="5" y1="27" x2="27" y2="27" stroke="#6FA287" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-      <span>News<b>Buddy</b> AI</span>
-    </a>
-    <nav class="nav-links" aria-label="Primary">
-      <a href="#how">How it works</a>
-      <a href="#languages">Languages</a>
-      <a href="#pricing">Pricing</a>
-    </nav>
-    <a class="btn btn-primary" href="https://wa.me/14155238886?text=join%20divide-wild">
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.638 5.448l-.999 3.648 3.85-1.01zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
-      <span>Join on WhatsApp</span>
-    </a>
-  </div>
-</header>
+<nav>
+  <div class="logo">News<span>Buddy</span></div>
+  <a class="nav-link" href="#signup">Get started →</a>
+</nav>
 
-<main id="main">
-<a id="top"></a>
-
-<!-- ================= HERO ================= -->
 <section class="hero">
-  <div class="hero-glow" aria-hidden="true"></div>
-  <div class="hero-sun" aria-hidden="true"></div>
-  <div class="wrap hero-grid">
-    <div class="hero-copy">
-      <span class="eyebrow" lang="ne" title="Nepalgunj · the first light of morning">नेपालगञ्ज · बिहानको पहिलो उज्यालो</span>
-      <h1 class="serif">Every morning, your phone <em>rings</em> with the news.</h1>
-      <p class="lead">
-        You know how much the news matters — the mandi rate, whether the road to Kohalpur is open,
-        the weather before you load the truck. NewsBuddy calls your phone every morning and an
-        AI voice reads you the local news, in your own language. No smartphone, no app, no reading.
-        Just pick up and listen.
-      </p>
-      <div class="hero-cta">
-        <a class="btn btn-primary" href="https://wa.me/14155238886?text=join%20divide-wild">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.638 5.448l-.999 3.648 3.85-1.01zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
-          Sign up free on WhatsApp
-        </a>
-        <a class="btn btn-ghost" href="#how">See how it works</a>
-      </div>
-      <p class="hero-note">Free to start · 3 calls a week · Stop anytime by saying “stop”.</p>
-      <div class="hero-trust">
-        <span class="pill sage"><span class="dot"></span> Verified local news</span>
-        <span class="pill">No smartphone needed</span>
-        <span class="pill" lang="hi">हिन्दी · नेपाली · English</span>
-      </div>
+  <div class="stage">
+    <div class="ring ring1"></div>
+    <div class="ring ring2"></div>
+    <div class="ring ring3"></div>
+
+    <span class="word word-yesterday">Yesterday</span>
+    <span class="word word-today">Today</span>
+    <span class="word word-tomorrow">Tomorrow</span>
+
+    <div class="phone-wrap">
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="88" rx="30" ry="5" fill="#0E1026" opacity="0.3"/>
+        <path d="M20 35 Q20 20 35 20 L65 20 Q80 20 80 35 L80 55 Q80 62 72 62 L28 62 Q20 62 20 55 Z" fill="#3E6259" stroke="#F0B368" stroke-width="1.5"/>
+        <circle cx="30" cy="72" r="9" fill="#1B1E3D" stroke="#F0B368" stroke-width="1.5"/>
+        <circle cx="70" cy="72" r="9" fill="#1B1E3D" stroke="#F0B368" stroke-width="1.5"/>
+        <rect x="26" y="30" width="48" height="24" rx="4" fill="#1B1E3D"/>
+        <circle cx="36" cy="42" r="3" fill="#E0983F"/>
+        <circle cx="50" cy="42" r="3" fill="#E0983F"/>
+        <circle cx="64" cy="42" r="3" fill="#E0983F"/>
+      </svg>
     </div>
 
-    <!-- Signature element: incoming-call phone mockup -->
-    <div class="phone-stage">
-      <div class="phone" aria-hidden="true">
-        <div class="phone-screen">
-          <div class="notch"></div>
-          <div class="statusbar">
-            <span>5:58</span>
-            <span class="sig" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-          </div>
-          <div class="incoming">Incoming call</div>
-
-          <div class="avatar">
-            <span class="ring r1"></span>
-            <span class="ring r2"></span>
-            <span class="ring r3"></span>
-            <span class="avatar-core">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.53 15.53 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24 11.36 11.36 0 003.56.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.36 11.36 0 00.57 3.56 1 1 0 01-.24 1.02l-2.21 2.21z"/></svg>
-            </span>
-          </div>
-
-          <div class="caller-name serif">NewsBuddy</div>
-          <div class="caller-sub" lang="ne">आजको समाचार · Nepalgunj</div>
-
-          <div class="ticker" id="ticker">
-            <span class="ticker-tag" id="tickerTag" lang="ne">मण्डी भाउ</span>
-            <span class="ticker-text" id="tickerText" lang="ne">मण्डीमा आज प्याज ₹४० प्रति किलो</span>
-          </div>
-
-          <div class="call-actions">
-            <span class="call-btn decline">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.53 15.53 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24 11.36 11.36 0 003.56.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.36 11.36 0 00.57 3.56 1 1 0 01-.24 1.02l-2.21 2.21z"/></svg>
-            </span>
-            <span class="call-btn accept">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.53 15.53 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24 11.36 11.36 0 003.56.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.36 11.36 0 00.57 3.56 1 1 0 01-.24 1.02l-2.21 2.21z"/></svg>
-            </span>
-          </div>
-        </div>
-      </div>
+    <div class="phone-wrap-2">
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="30" y="15" width="40" height="70" rx="10" fill="#1B1E3D" stroke="#F0B368" stroke-width="2"/>
+        <rect x="36" y="24" width="28" height="45" rx="2" fill="#3E6259"/>
+        <circle cx="50" cy="77" r="3.5" fill="#E0983F"/>
+      </svg>
     </div>
-  </div>
-</section>
 
-<!-- ================= HOW IT WORKS ================= -->
-<section id="how" class="section-pad">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <span class="eyebrow">How it works</span>
-      <h2 class="serif" style="margin-top:14px;">Four small steps. Then you just answer the phone.</h2>
-      <p class="lead">No setup headaches. If you can send a WhatsApp message, you can use NewsBuddy.</p>
-    </div>
-    <ol class="steps">
-      <li class="step reveal">
-        <span class="num">1</span>
-        <h3>Message us on WhatsApp</h3>
-        <p>Send us a quick “hi” on WhatsApp. That’s the whole sign-up — no forms to fill, nothing to download.</p>
-      </li>
-      <li class="step reveal">
-        <span class="num">2</span>
-        <h3>Tell us about you</h3>
-        <p>Your city, the language you’re comfortable in, and what you care about — mandi prices, weather, sports, local politics.</p>
-      </li>
-      <li class="step reveal">
-        <span class="num">3</span>
-        <h3>We call you every morning</h3>
-        <p>Your phone rings at the time you choose. An AI voice reads you the news that actually matters in your town, in your language.</p>
-      </li>
-      <li class="step reveal">
-        <span class="num">4</span>
-        <h3>Ask, or read it later</h3>
-        <p>Have a question during the call? Just ask out loud. Want it in writing too? We send a short summary on WhatsApp after.</p>
-      </li>
-    </ol>
-  </div>
-</section>
+    <div class="mic-wrap">
+      <svg viewBox="0 0 340 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="halftoneDots" width="8" height="8" patternUnits="userSpaceOnUse">
+            <circle cx="4" cy="4" r="2.6" fill="#15161d"/>
+          </pattern>
+          <clipPath id="megaSilhouette">
+            <rect x="54" y="116" width="22" height="48" rx="8"/>
+            <path d="M70,110 L244,48 C258,44 270,54 270,66 L270,214 C270,226 258,236 244,232 L70,170 Z"/>
+            <rect x="46" y="148" width="24" height="34" rx="7"/>
+          </clipPath>
+          <filter id="stickerShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#0E1026" flood-opacity="0.45"/>
+          </filter>
+        </defs>
 
-<!-- ================= LANGUAGES ================= -->
-<section id="languages" class="section-pad">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <span class="eyebrow">Your language</span>
-      <h2 class="serif" style="margin-top:14px;">Three languages, one phone call.</h2>
-      <p class="lead">Pick the one that feels like home. You can switch any time — just tell us on WhatsApp.</p>
-    </div>
-    <div class="langs-grid">
-      <div class="lang reveal">
-        <div class="lang-head">
-          <span class="lang-native" lang="hi">हिन्दी</span>
-          <span class="lang-rom">Hindi</span>
-        </div>
-        <p class="lang-sample" lang="hi">“नमस्ते! आज नेपालगंज की ताज़ा खबरें सुनिए — मंडी भाव, मौसम और शहर की बातें।”</p>
-        <span class="lang-listen"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span> What you’ll hear</span>
-      </div>
-      <div class="lang reveal">
-        <div class="lang-head">
-          <span class="lang-native" lang="ne">नेपाली</span>
-          <span class="lang-rom">Nepali</span>
-        </div>
-        <p class="lang-sample" lang="ne">“नमस्ते! आजका नेपालगञ्जका मुख्य समाचार सुन्नुहोस् — बजार भाउ, मौसम र सहरका कुरा।”</p>
-        <span class="lang-listen"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span> What you’ll hear</span>
-      </div>
-      <div class="lang reveal">
-        <div class="lang-head">
-          <span class="lang-native">English</span>
-          <span class="lang-rom">English</span>
-        </div>
-        <p class="lang-sample">“Good morning! Here’s what’s happening in Nepalgunj today — market rates, weather, and news around town.”</p>
-        <span class="lang-listen"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span> What you’ll hear</span>
-      </div>
+        <!-- cream die-cut sticker border (offset outward from the shapes above) -->
+        <g filter="url(#stickerShadow)">
+          <rect x="47" y="109" width="27" height="62" rx="10" fill="#F3ECDF"/>
+          <path d="M63,104 L248,40 C265,35 279,47 279,62 L279,218 C279,233 265,245 248,240 L63,177 Z" fill="#F3ECDF"/>
+          <rect x="39" y="142" width="31" height="46" rx="9" fill="#F3ECDF"/>
+        </g>
+
+        <!-- halftone dotted body, clipped to megaphone silhouette -->
+        <g clip-path="url(#megaSilhouette)">
+          <rect x="0" y="0" width="340" height="280" fill="url(#halftoneDots)"/>
+        </g>
+
+        <!-- amber accent line along the top edge of the horn -->
+        <path d="M92,102 C130,86 180,68 240,52" stroke="#E0983F" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+
+        <!-- bell rim highlight -->
+        <path d="M254,50 C264,54 270,60 270,66" stroke="#F3ECDF" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.55"/>
+
+        <!-- amber jagged sound bursts, fanning from the bell opening -->
+        <polygon points="292,72 336,52 310,96 340,92" fill="#E0983F"/>
+        <polygon points="296,116 356,108 316,140 360,144 300,168" fill="#E0983F"/>
+        <polygon points="296,186 332,204 302,222 336,238" fill="#E0983F"/>
+      </svg>
     </div>
   </div>
+
+  <h1>News that <span class="accent">finds</span> you</h1>
+  <p class="sub">A daily voice note in your language, about your town — delivered straight to WhatsApp every morning.</p>
 </section>
 
-<!-- ================= PRICING ================= -->
-<section id="pricing" class="section-pad">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <span class="eyebrow">Pricing</span>
-      <h2 class="serif" style="margin-top:14px;">Start free. Upgrade only if you love it.</h2>
-      <p class="lead">No card needed to begin. Pay by the month, cancel whenever — just tell us on WhatsApp.</p>
-    </div>
-    <div class="price-grid">
-      <!-- Free -->
-      <div class="plan reveal">
-        <div class="plan-name">Free</div>
-        <div class="plan-price"><span class="amt">₹0</span><span class="per">to start</span></div>
-        <p class="plan-blurb">Try it for a couple of weeks and see if the morning call fits your day.</p>
-        <ul class="plan-features">
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> 3 calls a week</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Your local headlines</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Choose your language</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Stop anytime — just say so</li>
-        </ul>
-        <a class="btn btn-ghost btn-block" href="https://wa.me/14155238886?text=join%20divide-wild">Start free</a>
-      </div>
+<section class="card-section" id="signup">
+  <form class="card" id="signupForm" novalidate>
+    <span class="card-eyebrow">Step 1 of 2</span>
+    <h2>Get started</h2>
 
-      <!-- Basic (featured) -->
-      <div class="plan featured reveal">
-        <span class="plan-tag">Most popular</span>
-        <div class="plan-name">Basic</div>
-        <div class="plan-price"><span class="amt">₹149</span><span class="per">/ month</span></div>
-        <p class="plan-blurb">The full morning habit — a call every day, plus a written summary to keep.</p>
-        <ul class="plan-features">
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> A call every morning</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> WhatsApp summary after each call</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Pick your call time</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Ask questions during the call</li>
-        </ul>
-        <a class="btn btn-primary btn-block" href="https://wa.me/14155238886?text=join%20divide-wild">Choose Basic</a>
-      </div>
-
-      <!-- Premium -->
-      <div class="plan reveal">
-        <div class="plan-name">Premium</div>
-        <div class="plan-price"><span class="amt">₹299</span><span class="per">/ month</span></div>
-        <p class="plan-blurb">For when being first to know is worth it — breaking news the moment it happens.</p>
-        <ul class="plan-features">
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Everything in Basic</li>
-          <li class="hot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg> Breaking-news calls when something big happens</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Priority morning slot — among the first called</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Add a family member’s number</li>
-        </ul>
-        <a class="btn btn-ghost btn-block" href="https://wa.me/14155238886?text=join%20divide-wild">Choose Premium</a>
-      </div>
-    </div>
-  </div>
-</section>
-</main>
-
-<!-- ================= FOOTER ================= -->
-<footer>
-  <div class="wrap">
-    <div class="footer-cta reveal">
-      <span class="eyebrow" style="justify-content:center;">Ready when you are</span>
-      <h2 class="serif" style="margin-top:14px;">Your news is one phone call away.</h2>
-      <p>Send “join” on WhatsApp and we’ll have you set up in two minutes. Tomorrow morning, your phone rings.</p>
-      <a class="btn btn-primary" href="https://wa.me/14155238886?text=join%20divide-wild">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.638 5.448l-.999 3.648 3.85-1.01zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
-        Sign up on WhatsApp
-      </a>
-    </div>
-
-    <div class="foot-bottom">
-      <div class="brand" style="font-size:0.98rem;">
-        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true" style="width:26px;height:26px;">
-          <rect width="32" height="32" rx="8" fill="#1B1E27"/>
-          <circle cx="16" cy="21" r="6" fill="#F2A33C"/>
-          <g stroke="#F2A33C" stroke-width="2" stroke-linecap="round"><line x1="16" y1="6" x2="16" y2="9"/><line x1="6" y1="12" x2="8" y2="13.5"/><line x1="26" y1="12" x2="24" y2="13.5"/></g>
-          <line x1="5" y1="27" x2="27" y2="27" stroke="#6FA287" stroke-width="2" stroke-linecap="round"/>
+    <!-- Internal-testing banner — intentionally visible, not just a code comment.
+         Ported from call-page/signup.html; the page is not for public release. -->
+    <div class="gate-banner" role="note">
+      <div class="banner-label">
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8 1.5L1 14h14L8 1.5zM8 5.5v4M8 11h.01" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/>
         </svg>
-        <span>© 2026 NewsBuddy AI</span>
+        Internal testing only — not for public use
       </div>
-      <nav class="foot-links" aria-label="Footer">
-        <a href="#how">How it works</a>
-        <a href="#languages">Languages</a>
-        <a href="#pricing">Pricing</a>
-        <a href="https://wa.me/14155238886?text=join%20divide-wild">WhatsApp</a>
-      </nav>
-      <span>Made with care in Nepalgunj 🌅</span>
+      <p>This page is not publicly linked. The password below is a <b>client-side speed bump only</b> — it prevents accidental use of a leaked link, not real authentication. If you received this link by mistake, please close this tab.</p>
     </div>
-  </div>
-</footer>
+
+    <!-- Testing gate (client-side speed bump — see script constant GATE_PASSWORD) -->
+    <div class="field gate-field">
+      <label for="gatePass">Testing password</label>
+      <input type="password" id="gatePass" name="gatePass" placeholder="Shared testing password"
+             autocomplete="off" spellcheck="false" required>
+    </div>
+
+    <div class="field">
+      <label for="name">Your name</label>
+      <input type="text" id="name" name="name" placeholder="e.g. Rajesh Thapa" required>
+    </div>
+
+    <div class="field">
+      <label for="phone">Mobile number</label>
+      <div class="phone-row">
+        <input type="text" class="code" id="countryCode" value="+977" aria-label="Country code">
+        <input type="tel" id="phone" name="phone" placeholder="98XXXXXXXX" required style="flex:1;">
+      </div>
+    </div>
+
+    <!-- Inline error (shown on validation / non-2xx / network failure) -->
+    <div class="form-error" id="formError" role="alert">
+      <b id="errorTitle"></b><span id="errorMsg"></span>
+    </div>
+
+    <button type="submit" class="cta" id="submitBtn">Continue on WhatsApp →</button>
+
+    <p class="card-foot">Next, you'll open WhatsApp to set <b>your city</b> and <b>call time</b> — takes 30 seconds.</p>
+  </form>
+</section>
+
+<footer>NewsBuddy — hyperlocal voice news for India &amp; Nepal</footer>
 
 <script>
-  // Mark JS as available so the scroll-reveal styles kick in (graceful no-JS fallback).
-  document.documentElement.classList.add('js');
+  // ── Configuration ─────────────────────────────────────────────────────────────
+  // Keep these in sync with the old call-page/signup.html (now retired). No
+  // trailing slash. Update BACKEND_URL when the deployed backend URL changes.
+  const BACKEND_URL = "https://newsbuddy-ai-production.up.railway.app";
 
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // ⚠️ WEAK CLIENT-SIDE GATE — plaintext, trivially bypassable by reading the
+  // source. Purpose: prevent casual misuse of an accidentally shared link only.
+  // NOT real authentication. Share it with testers verbally, never in writing.
+  const GATE_PASSWORD = "nb-test-2026";
 
-  /* ---- Live news ticker on the call screen ---- */
-  (function(){
-    const tEl   = document.getElementById('tickerText');
-    const tagEl = document.getElementById('tickerTag');
-    const box   = document.getElementById('ticker');
-    if (!tEl) return;
+  // ── Twilio WhatsApp sandbox — single source of truth for the join phrase ──────
+  // Feeds the post-signup redirect. If the sandbox is reset, change SANDBOX_PHRASE
+  // here (Twilio Console → Messaging → WhatsApp sandbox).
+  const SANDBOX_NUMBER = "14155238886";   // digits only — no +, spaces, dashes (wa.me spec)
+  const SANDBOX_PHRASE = "divide-wild";    // the rotating join phrase
+  const waJoinHref = `https://wa.me/${SANDBOX_NUMBER}?text=${encodeURIComponent('join ' + SANDBOX_PHRASE)}`;
 
-    // Real-feeling morning headlines for a Tier 2/3 town (mandi, transport, breaking, weather).
-    const headlines = [
-      { tag: 'मण्डी भाउ',  text: 'मण्डीमा आज प्याज ₹४० प्रति किलो',            lang: 'ne', kind: 'verified' },
-      { tag: 'यातायात',    text: 'नेपालगञ्ज–कोहलपुर सडक खुल्ला, यातायात सुचारु', lang: 'ne', kind: 'verified' },
-      { tag: 'ताजा खबर',   text: 'आज दिउँसो बजार बन्द रहने सूचना',           lang: 'ne', kind: 'breaking' },
-      { tag: 'मौसम',       text: 'आज मौसम सफा, अधिकतम तापक्रम ३२°',          lang: 'hi', kind: 'verified' }
-    ];
+  // ── Element references ────────────────────────────────────────────────────────
+  const form       = document.getElementById('signupForm');
+  const submitBtn  = document.getElementById('submitBtn');
+  const formError  = document.getElementById('formError');
+  const errorTitle = document.getElementById('errorTitle');
+  const errorMsg   = document.getElementById('errorMsg');
 
-    let i = 0;
-    function render(idx){
-      const h = headlines[idx];
-      tagEl.textContent = h.tag;  tagEl.setAttribute('lang', h.lang);
-      tEl.textContent   = h.text; tEl.setAttribute('lang', h.lang);
-      box.classList.toggle('breaking', h.kind === 'breaking');
-    }
-    render(0);
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+  function showError(title, message){
+    errorTitle.textContent = title;
+    errorMsg.textContent = ' ' + message;
+    formError.style.display = 'block';
+    formError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  function hideError(){ formError.style.display = 'none'; }
+  function setLoading(on){
+    submitBtn.disabled = on;
+    submitBtn.textContent = on ? 'Signing you up…' : 'Continue on WhatsApp →';
+  }
 
-    function advance(){
-      i = (i + 1) % headlines.length;
-      if (reduceMotion){ render(i); return; }   // instant swap, no fade
-      tEl.style.opacity = '0';
-      setTimeout(() => { render(i); tEl.style.opacity = '1'; }, 450);
-    }
-    setInterval(advance, 3200);
-  })();
+  // Combine the country-code prefix with the national number into E.164:
+  // keep only digits from each part, drop a leading 0 on the national number
+  // (users often type 098…), then prepend a single +.
+  function buildE164(code, national){
+    const cc = code.replace(/\D/g, '');             // "+977" → "977"
+    const nn = national.replace(/\D/g, '').replace(/^0+/, '');  // "098…" → "98…"
+    return '+' + cc + nn;
+  }
+  // Best-effort country from the dialling prefix (page defaults to +977 Nepal).
+  function inferCountry(e164){
+    if (e164.startsWith('+977')) return 'NP';
+    if (e164.startsWith('+91'))  return 'IN';
+    return 'NP';
+  }
 
-  /* ---- Scroll reveal ---- */
-  (function(){
-    const items = document.querySelectorAll('.reveal');
-    if (reduceMotion || !('IntersectionObserver' in window)){
-      items.forEach(el => el.classList.add('in'));
+  // ── Form submission ───────────────────────────────────────────────────────────
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();          // no page reload
+    hideError();
+
+    // ── Client-side testing gate (speed bump only) ──
+    const gatePass = document.getElementById('gatePass').value;
+    if (gatePass !== GATE_PASSWORD){
+      showError('Wrong testing password', 'Check with the team for the current password.');
+      document.getElementById('gatePass').focus();
       return;
     }
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+
+    const name  = document.getElementById('name').value.trim();
+    const phone = buildE164(
+      document.getElementById('countryCode').value,
+      document.getElementById('phone').value
+    );
+
+    // ── Client-side validation ──
+    if (!name){
+      showError('Name required', 'Please enter your name.');
+      document.getElementById('name').focus();
+      return;
+    }
+    if (!/^\+\d{8,15}$/.test(phone)){   // + followed by 8–15 digits
+      showError('Invalid phone number', 'Enter your WhatsApp number, e.g. +977 98XXXXXXXX or +91 98XXXXXXXXX.');
+      document.getElementById('phone').focus();
+      return;
+    }
+
+    // City + call time are collected later over WhatsApp (see the card footer),
+    // so we send an empty-string city placeholder and default language here.
+    // Everything else falls back to the backend's UserCreate defaults.
+    const payload = {
+      phone_number: phone,
+      name,
+      city: "",
+      country: inferCountry(phone),
+      language: "en",
+    };
+
+    setLoading(true);
+    try{
+      const res = await fetch(BACKEND_URL.replace(/\/$/, '') + '/api/users/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Tells ngrok-free to skip its browser interstitial; harmless on a
+          // real host (unknown header, ignored). Remove once off ngrok-free.
+          'ngrok-skip-browser-warning': 'true',
+        },
+        body: JSON.stringify(payload),
       });
-    }, { threshold: 0.14, rootMargin: '0px 0px -8% 0px' });
-    items.forEach(el => io.observe(el));
-  })();
+
+      // ── Success (2xx): redirect straight to the WhatsApp join deep-link ──
+      if (res.ok){
+        window.location.href = waJoinHref;
+        return;
+      }
+
+      // ── Already registered (409): friendly inline note; do NOT redirect ──
+      if (res.status === 409){
+        showError(
+          'Already registered',
+          `This number is already signed up. Open WhatsApp and send “join ${SANDBOX_PHRASE}” to +1 415 523 8886 to activate.`
+        );
+      } else if (res.status === 422){
+        // Pydantic validation error — surface the first field error
+        const data = await res.json().catch(() => ({}));
+        const d = data.detail;
+        let msg = `Server returned ${res.status}`;
+        if (Array.isArray(d) && d[0]?.msg){
+          msg = d[0].msg + (d[0].loc ? ` (${d[0].loc.slice(1).join(' → ')})` : '');
+        } else if (typeof d === 'string'){ msg = d; }
+        showError('Validation error', msg);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        const detail = typeof data.detail === 'string' ? data.detail : `HTTP ${res.status}`;
+        showError('Sign-up failed', detail);
+      }
+    } catch(err){
+      const offline = !navigator.onLine || /failed to fetch/i.test(err.message || '');
+      showError(
+        offline ? 'No connection' : "Couldn't reach the server",
+        offline ? 'Check your internet connection and try again.'
+                : 'The backend may be unavailable. Please try again in a moment.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  });
 </script>
+
 </body>
 </html>
