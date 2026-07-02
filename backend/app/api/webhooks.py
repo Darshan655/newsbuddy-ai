@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Depends, Request, Form
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+from typing import Optional
 import re
 
-from app.models.database import get_db, User, CallLog
+from app.models.database import get_db, User, CallLog, NewsCategory
 from app.models.schemas import VAPICallEvent
 
 router = APIRouter()
+
+# Canonical topic taxonomy for the NEWS TYPE command -- mirrors NewsCategory
+# so we don't invent a second list of topic names.
+VALID_TOPICS = [c.value for c in NewsCategory]
 
 
 # ── WhatsApp Webhook ───────────────────────────────────────────────────────────
@@ -81,7 +86,8 @@ async def whatsapp_webhook(
                     f"🗣️ Language: {lang_str.title()}\n"
                     f"⏰ Daily call: 7:00 AM\n\n"
                     f"You'll get your first call tomorrow morning!\n"
-                    f"Reply *TIME HH:MM* to change your call time.\n"
+                    f"Reply *TIME 7:00 AM* to change your call time.\n"
+                    f"Reply *NEWS TYPE business, crime* to set your topics.\n"
                     f"Reply *HELP* for all options."
                 )
         except (IndexError, ValueError):
@@ -92,17 +98,53 @@ async def whatsapp_webhook(
             )
         return _twilio_twiml_response(reply)
 
-    # ── Change call time ───────────────────────────────────────────────────────
-    if message.upper().startswith("TIME") and user:
-        try:
-            time_str = message[4:].strip()
-            h, m = map(int, time_str.split(":"))
-            assert 0 <= h <= 23 and 0 <= m <= 59
-            user.preferred_call_time = time_str
+    # ── View call time ─────────────────────────────────────────────────────────
+    if message.upper() == "TIME" and user:
+        current = user.preferred_call_time or "07:00"
+        reply = f"⏰ Your daily call is currently set for {_format_time_12h(current)}."
+        return _twilio_twiml_response(reply)
+
+    # ── Set call time ──────────────────────────────────────────────────────────
+    if message.upper().startswith("TIME ") and user:
+        time_arg = message[5:].strip()
+        parsed = _parse_time_string(time_arg)
+        if not parsed:
+            reply = (
+                "❌ Couldn't understand that time. Try:\n"
+                "*TIME 7:00 AM* or *TIME 19:30*"
+            )
+        else:
+            user.preferred_call_time = parsed
             db.commit()
-            reply = f"⏰ Done! Your daily call is now set for {time_str} every morning."
-        except Exception:
-            reply = "❌ Invalid time. Try: TIME 08:30"
+            reply = f"Got it! I'll send your news at {_format_time_12h(parsed)} daily."
+        return _twilio_twiml_response(reply)
+
+    # ── View news topics ───────────────────────────────────────────────────────
+    if message.upper() == "NEWS TYPE" and user:
+        if user.topics:
+            reply = f"📰 Your current news topics: {', '.join(user.topics)}."
+        else:
+            reply = "📰 You haven't set specific topics yet — you're getting general local news."
+        return _twilio_twiml_response(reply)
+
+    # ── Set news topics ────────────────────────────────────────────────────────
+    if message.upper().startswith("NEWS TYPE ") and user:
+        raw_topics = message[len("NEWS TYPE "):].strip()
+        requested = [t.strip().lower().replace(" ", "_") for t in raw_topics.split(",") if t.strip()]
+        valid = [t for t in requested if t in VALID_TOPICS]
+        invalid = [t for t in requested if t not in VALID_TOPICS]
+
+        if not valid:
+            reply = (
+                "❌ I didn't recognise any of those topics. Choose from:\n"
+                f"{', '.join(VALID_TOPICS)}"
+            )
+        else:
+            user.topics = valid
+            db.commit()
+            reply = f"📰 Got it! You'll now hear news about: {', '.join(valid)}."
+            if invalid:
+                reply += f"\n(Skipped unrecognised: {', '.join(invalid)})"
         return _twilio_twiml_response(reply)
 
     # ── HELP ───────────────────────────────────────────────────────────────────
@@ -110,9 +152,12 @@ async def whatsapp_webhook(
         reply = (
             "*NewsBuddy Commands:*\n\n"
             "📞 *CALL NOW* — Request a call right now\n"
-            "⏰ *TIME 08:30* — Change your daily call time\n"
+            "⏰ *TIME* — See your daily call time\n"
+            "⏰ *TIME 7:00 AM* — Change your daily call time\n"
             "🔄 *CALL IN 15* — Call me in 15 minutes\n"
             "📍 *CITY Pokhara* — Change your city\n"
+            "📰 *NEWS TYPE* — See your news topics\n"
+            "📰 *NEWS TYPE business, crime* — Change your news topics\n"
             "❌ *STOP* — Pause your subscription\n"
             "▶️ *START* — Resume your subscription"
         )
@@ -151,12 +196,10 @@ async def whatsapp_webhook(
 
         return _twilio_twiml_response(reply)
 
-    # ── Default ────────────────────────────────────────────────────────────────
-    if not user:
-        reply = "👋 Reply *START* to sign up for NewsBuddy — daily local news by voice call!"
-    else:
-        reply = f"Hi {user.name}! Reply *HELP* to see available commands."
-
+    # ── Fallback: unrecognised message ────────────────────────────────────────
+    # Covers brand-new users (no SIGNUP yet) and existing users who typed
+    # something that doesn't match any command above -- never fail silently.
+    reply = "🙏 Namaste! 👋 Type *START* to get started, or *HELP* to see what I can do."
     return _twilio_twiml_response(reply)
 
 
@@ -211,6 +254,30 @@ async def vapi_webhook(event: VAPICallEvent, db: Session = Depends(get_db)):
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _parse_time_string(raw: str) -> Optional[str]:
+    """
+    Parse a user-supplied time (e.g. '7:00 AM', '07:00', '19:30') into
+    24-hour 'HH:MM', or None if it can't be parsed.
+    """
+    cleaned = raw.strip().upper()
+    if not cleaned:
+        return None
+    formats = ["%I:%M %p", "%I:%M%p", "%I %p", "%I%p", "%H:%M", "%H.%M"]
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(cleaned, fmt)
+            return dt.strftime("%H:%M")
+        except ValueError:
+            continue
+    return None
+
+
+def _format_time_12h(hhmm: str) -> str:
+    """Format a stored 'HH:MM' (24-hour) time as e.g. '7:00 AM' for replies."""
+    dt = datetime.strptime(hhmm, "%H:%M")
+    return dt.strftime("%I:%M %p").lstrip("0")
+
 
 def _parse_call_in_minutes(message: str) -> int | None:
     """

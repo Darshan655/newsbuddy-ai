@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import Any, List, Optional
 from datetime import datetime, timedelta
@@ -224,7 +225,7 @@ def get_web_assistant(body: WebAssistantRequest, db: Session = Depends(get_db)):
         db.query(NewsItem)
         .filter(
             NewsItem.is_active == True,
-            NewsItem.city.ilike(f"%{body.city}%"),
+            func.lower(func.trim(NewsItem.city)) == body.city.strip().lower(),
         )
         .order_by(NewsItem.importance_score.desc(), NewsItem.created_at.desc())
         .limit(5)
