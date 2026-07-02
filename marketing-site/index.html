@@ -285,29 +285,6 @@
     letter-spacing:0.5px;
   }
 
-  /* ---------- Internal-testing gate + banner (ported from signup.html) ---------- */
-  .gate-banner{
-    background: rgba(224,152,63,0.09);
-    border:1px solid rgba(224,152,63,0.30);
-    border-radius:12px;
-    padding:12px 14px;
-    margin-bottom:20px;
-    font-size:13px; line-height:1.5;
-    color: rgba(243,236,223,0.75);
-  }
-  .gate-banner .banner-label{
-    display:flex; align-items:center; gap:7px;
-    color:var(--brass);
-    font-family:'Space Grotesk', sans-serif;
-    font-weight:600; font-size:11px;
-    letter-spacing:1px; text-transform:uppercase;
-    margin-bottom:6px;
-  }
-  .gate-banner .banner-label svg{ width:14px; height:14px; flex:none; }
-  .gate-banner b{ color:var(--brass-soft); font-weight:600; }
-  .gate-field input{ border-color: rgba(224,152,63,0.25); }
-  .gate-field input:focus{ border-color:var(--brass); }
-
   /* ---------- Inline form error ---------- */
   .form-error{
     display:none;
@@ -416,25 +393,6 @@
     <span class="card-eyebrow">Step 1 of 2</span>
     <h2>Get started</h2>
 
-    <!-- Internal-testing banner — intentionally visible, not just a code comment.
-         Ported from call-page/signup.html; the page is not for public release. -->
-    <div class="gate-banner" role="note">
-      <div class="banner-label">
-        <svg viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M8 1.5L1 14h14L8 1.5zM8 5.5v4M8 11h.01" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-        </svg>
-        Internal testing only — not for public use
-      </div>
-      <p>This page is not publicly linked. The password below is a <b>client-side speed bump only</b> — it prevents accidental use of a leaked link, not real authentication. If you received this link by mistake, please close this tab.</p>
-    </div>
-
-    <!-- Testing gate (client-side speed bump — see script constant GATE_PASSWORD) -->
-    <div class="field gate-field">
-      <label for="gatePass">Testing password</label>
-      <input type="password" id="gatePass" name="gatePass" placeholder="Shared testing password"
-             autocomplete="off" spellcheck="false" required>
-    </div>
-
     <div class="field">
       <label for="name">Your name</label>
       <input type="text" id="name" name="name" placeholder="e.g. Rajesh Thapa" required>
@@ -466,11 +424,6 @@
   // Keep these in sync with the old call-page/signup.html (now retired). No
   // trailing slash. Update BACKEND_URL when the deployed backend URL changes.
   const BACKEND_URL = "https://newsbuddy-ai-production.up.railway.app";
-
-  // ⚠️ WEAK CLIENT-SIDE GATE — plaintext, trivially bypassable by reading the
-  // source. Purpose: prevent casual misuse of an accidentally shared link only.
-  // NOT real authentication. Share it with testers verbally, never in writing.
-  const GATE_PASSWORD = "nb-test-2026";
 
   // ── Twilio WhatsApp sandbox — single source of truth for the join phrase ──────
   // Feeds the post-signup redirect. If the sandbox is reset, change SANDBOX_PHRASE
@@ -518,14 +471,6 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();          // no page reload
     hideError();
-
-    // ── Client-side testing gate (speed bump only) ──
-    const gatePass = document.getElementById('gatePass').value;
-    if (gatePass !== GATE_PASSWORD){
-      showError('Wrong testing password', 'Check with the team for the current password.');
-      document.getElementById('gatePass').focus();
-      return;
-    }
 
     const name  = document.getElementById('name').value.trim();
     const phone = buildE164(
