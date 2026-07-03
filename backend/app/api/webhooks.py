@@ -13,6 +13,9 @@ router = APIRouter()
 # so we don't invent a second list of topic names.
 VALID_TOPICS = [c.value for c in NewsCategory]
 
+# Language codes the LANGUAGE command accepts, mapped to display names.
+LANGUAGE_NAMES = {"en": "English", "hi": "Hindi", "ne": "Nepali"}
+
 
 # ── WhatsApp Webhook ───────────────────────────────────────────────────────────
 
@@ -89,6 +92,7 @@ async def whatsapp_webhook(
                     f"Reply *TIME 7:00 AM* to change your call time.\n"
                     f"Reply *CITY Pokhara* to change your city.\n"
                     f"Reply *NEWS TYPE business, crime* to set your topics.\n"
+                    f"Reply *LANGUAGE en* to change your language.\n"
                     f"Reply *HELP* for all options."
                 )
         except (IndexError, ValueError):
@@ -167,6 +171,32 @@ async def whatsapp_webhook(
             reply = f"📍 Got it! You'll now get news for {new_city}."
         return _twilio_twiml_response(reply)
 
+    # ── View language ──────────────────────────────────────────────────────────
+    if message.upper() == "LANGUAGE" and user:
+        current = LANGUAGE_NAMES.get(user.language, user.language or "English")
+        reply = f"🗣️ Your current language: {current}."
+        return _twilio_twiml_response(reply)
+
+    # ── Set language ───────────────────────────────────────────────────────────
+    if message.upper().startswith("LANGUAGE ") and user:
+        lang_arg = message[len("LANGUAGE "):].strip().lower()
+        if lang_arg not in LANGUAGE_NAMES:
+            reply = (
+                "❌ I don't recognise that. Choose from:\n"
+                "en (English), hi (Hindi), ne (Nepali)"
+            )
+        else:
+            user.language = lang_arg
+            db.commit()
+            reply = f"🗣️ Got it! Your news will now be in {LANGUAGE_NAMES[lang_arg]}."
+            if lang_arg in ("hi", "ne"):
+                reply += (
+                    f"\n({LANGUAGE_NAMES[lang_arg]} is coming soon — you'll get "
+                    f"English news for now, and we'll switch you over "
+                    f"automatically once it's ready.)"
+                )
+        return _twilio_twiml_response(reply)
+
     # ── HELP ───────────────────────────────────────────────────────────────────
     if message.upper() == "HELP":
         reply = (
@@ -179,6 +209,8 @@ async def whatsapp_webhook(
             "📍 *CITY Pokhara* — Change your city\n"
             "📰 *NEWS TYPE* — See your news topics\n"
             "📰 *NEWS TYPE business, crime* — Change your news topics\n"
+            "🗣️ *LANGUAGE* — See your current language\n"
+            "🗣️ *LANGUAGE hi* — Change your language (en / hi / ne)\n"
             "❌ *STOP* — Pause your subscription\n"
             "▶️ *START* — Resume your subscription"
         )
