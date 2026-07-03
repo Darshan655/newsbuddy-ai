@@ -285,6 +285,175 @@
     letter-spacing:0.5px;
   }
 
+  /* ---------- Liquid glass (parchment/brass palette, matches .card) ---------- */
+  .liquid-glass{
+    background: rgba(243,236,223,0.03);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid var(--line);
+    box-shadow: inset 0 1px 1px rgba(243,236,223,0.10), 0 14px 34px rgba(14,16,38,0.30);
+    border-radius: 20px;
+  }
+
+  /* ---------- How it works + Commands sections ---------- */
+  .guide-section{
+    max-width:1080px;
+    margin:0 auto;
+    padding: 40px clamp(20px,5vw,64px) 10px;
+  }
+  .guide-section h2{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:900; font-size: clamp(26px,4vw,36px);
+    text-transform:uppercase; letter-spacing:0.3px;
+    margin-bottom:24px;
+  }
+  .step-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap:16px;
+  }
+  .step-card, .cmd-card{ padding:22px 20px; }
+  .step-num{
+    display:block;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600; font-size:12px;
+    letter-spacing:2px; text-transform:uppercase;
+    color:var(--brass); margin-bottom:10px;
+  }
+  .step-card h3{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:900; font-size:22px;
+    text-transform:uppercase; letter-spacing:0.3px;
+    margin-bottom:8px;
+  }
+  .step-card p, .cmd-card p{
+    font-size:14px; line-height:1.55;
+    color:var(--parchment); opacity:0.75;
+  }
+  .step-card p b{ color:var(--brass-soft); font-weight:600; }
+  .cmd-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap:14px;
+  }
+  .cmd-card b{
+    display:block;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600; font-size:14px; letter-spacing:0.5px;
+    color:var(--brass-soft); margin-bottom:6px;
+  }
+  .guide-cta-row{ text-align:center; margin-top:28px; }
+  .cta-link{
+    display:inline-block; width:auto;
+    padding:15px 46px;
+    text-decoration:none;
+  }
+
+  /* ---------- Scroll-reveal animations (progressive enhancement) ----------
+     Cards are fully visible with no JS: base state is opacity 1 and no
+     transform. JS only ADDS .visible, which plays a one-shot entrance
+     animation; everything is gated behind prefers-reduced-motion. */
+  @media (prefers-reduced-motion: no-preference){
+    .reveal.visible{ animation: rise-in 0.55s ease backwards; }
+    .cmd-grid .reveal.visible{ animation-name: rise-scale-in; }
+    .step-grid > :nth-child(2).visible, .cmd-grid > :nth-child(2).visible{ animation-delay:0.1s; }
+    .step-grid > :nth-child(3).visible, .cmd-grid > :nth-child(3).visible{ animation-delay:0.2s; }
+    .step-grid > :nth-child(4).visible, .cmd-grid > :nth-child(4).visible{ animation-delay:0.3s; }
+    .cmd-grid > :nth-child(5).visible{ animation-delay:0.4s; }
+    .cmd-grid > :nth-child(6).visible{ animation-delay:0.5s; }
+    .cmd-grid > :nth-child(7).visible{ animation-delay:0.6s; }
+    .cmd-grid > :nth-child(8).visible{ animation-delay:0.7s; }
+    .word-up{ display:inline-block; animation: rise-in 0.5s ease backwards; }
+  }
+  @keyframes rise-in{ from{ opacity:0; transform: translateY(20px); } }
+  @keyframes rise-scale-in{ from{ opacity:0; transform: translateY(14px) scale(0.96); } }
+
+  /* ---------- Scroll-driven flow path (How it works → Commands → signup) ----------
+     No-JS base state: track + glow visible at flat low opacity across the
+     full span, progress path hidden (dasharray), pulse hidden. JS adds
+     .flow-on and drives the pulse position + draw-on effect. The wrap sits
+     at z-index:-1 so every section's text paints above it. */
+  .flow-zone{ position:relative; }
+  .flow-wrap{
+    position:absolute; inset:0;
+    z-index:-1; pointer-events:none;
+  }
+  .flow-svg{ display:block; width:100%; height:100%; }
+  .flow-glow{
+    stroke:var(--brass); stroke-width:8; opacity:0.25;
+    filter: blur(3px);   /* single cheap blurred duplicate for depth */
+  }
+  .flow-track{ stroke:var(--brass); stroke-width:2; opacity:0.25; }
+  .flow-on .flow-track{ opacity:0.15; }
+  .flow-progress{
+    stroke:var(--brass); stroke-width:2; opacity:0.6;
+    stroke-dasharray:1; stroke-dashoffset:1;  /* pathLength=1; hidden until JS draws it */
+  }
+  .flow-pulse{
+    display:none;
+    position:absolute; left:0; top:0;
+    width:20px; height:20px; margin:-10px 0 0 -10px;
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, var(--brass-soft) 0%, var(--brass) 55%, #a06a24 100%);
+    box-shadow: 0 3px 8px rgba(14,16,38,0.55), 0 0 16px rgba(224,152,63,0.5);
+    will-change:transform;
+  }
+  .flow-on .flow-pulse{ display:block; }
+  .flow-pulse .ping{
+    position:absolute; inset:0;
+    border:2px solid var(--brass-soft);
+    border-radius:50%;
+    opacity:0;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .flow-pulse .ping{ animation: flow-ping 2s ease-out infinite; }
+    .flow-pulse .ping2{ animation-delay:1s; }
+  }
+  @keyframes flow-ping{
+    from{ transform:scale(1); opacity:0.6; }
+    to{ transform:scale(1.8); opacity:0; }
+  }
+  /* Sparkle glints: tiny warm-white dots at fixed offsets around the orb.
+     Children of the pulse, so they ride its translate3d for free. Base
+     opacity is 0 — they only appear while the twinkle animation runs, so
+     reduced motion hides them with no extra rule. */
+  .flow-pulse::before, .flow-pulse::after{ content:""; }
+  .flow-pulse::before, .flow-pulse::after, .flow-pulse .spark{
+    position:absolute;
+    width:3px; height:3px; border-radius:50%;
+    background:#fff3dc;   /* warm white — reads as a glint, not orb brass */
+    box-shadow:0 0 4px 1px rgba(255,240,214,0.65);
+    opacity:0;
+  }
+  .flow-pulse::before{ top:-5px; left:3px; }
+  .flow-pulse::after{ top:14px; left:19px; width:2px; height:2px; }
+  .flow-pulse .s1{ top:2px; left:-6px; width:2px; height:2px; }
+  .flow-pulse .s2{ top:-3px; left:16px; }
+  .flow-pulse .s3{ top:19px; left:1px; width:2px; height:2px; }
+  @media (prefers-reduced-motion: no-preference){
+    .flow-pulse::before{ animation: twinkle 1.4s ease-in-out infinite; }
+    .flow-pulse::after{ animation: twinkle 2.2s ease-in-out infinite 0.5s; }
+    .flow-pulse .s1{ animation: twinkle 1.8s ease-in-out infinite 0.9s; }
+    .flow-pulse .s2{ animation: twinkle 2.6s ease-in-out infinite 1.3s; }
+    .flow-pulse .s3{ animation: twinkle 1.6s ease-in-out infinite 0.3s; }
+  }
+  @keyframes twinkle{
+    0%, 100%{ opacity:0; transform:scale(0.6); }
+    50%{ opacity:1; transform:scale(1.15); }
+  }
+  /* Reduced motion: static fully-visible track, pulse pinned near the top
+     of the journey (start of How it works), no rings, no draw-on, no
+     movement (JS also skips entirely). */
+  @media (prefers-reduced-motion: reduce){
+    .flow-track{ opacity:0.55; }
+    .flow-progress{ display:none; }
+    .flow-pulse{ display:block; left:50%; top:120px; }
+    .flow-pulse .ping{ display:none; }
+  }
+  @media (prefers-reduced-motion: reduce) and (max-width:640px){
+    .flow-pulse{ left:6px; }
+  }
+
   /* ---------- Inline form error ---------- */
   .form-error{
     display:none;
@@ -388,6 +557,88 @@
   <p class="sub">A daily voice note in your language, about your town — delivered straight to WhatsApp every morning.</p>
 </section>
 
+<div class="flow-zone">
+<div class="flow-wrap" aria-hidden="true">
+  <!-- Spans How-it-works → Commands → the signup button. Default d is the
+       mobile gutter line so the no-JS render looks intentional; JS rebuilds
+       d + viewBox from the real positions of all three sections (column-gap
+       threading on desktop). pathLength=1 normalises the dash math. -->
+  <svg class="flow-svg" viewBox="0 0 375 2600" preserveAspectRatio="none" fill="none" focusable="false">
+    <path class="flow-glow" d="M 6 12 C 12 870, 0 1730, 6 2560" pathLength="1" vector-effect="non-scaling-stroke"/>
+    <path class="flow-track" d="M 6 12 C 12 870, 0 1730, 6 2560" pathLength="1" vector-effect="non-scaling-stroke"/>
+    <path class="flow-progress" d="M 6 12 C 12 870, 0 1730, 6 2560" pathLength="1" vector-effect="non-scaling-stroke"/>
+  </svg>
+  <div class="flow-pulse"><span class="ping"></span><span class="ping ping2"></span><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></div>
+</div>
+<section class="guide-section" id="how-it-works">
+  <span class="card-eyebrow">How it works</span>
+  <h2>Four steps to your morning news</h2>
+  <div class="step-grid">
+    <div class="liquid-glass step-card reveal">
+      <span class="step-num">Step 1</span>
+      <h3>Join on WhatsApp</h3>
+      <p>Tap the button below, send the join message.</p>
+    </div>
+    <div class="liquid-glass step-card reveal">
+      <span class="step-num">Step 2</span>
+      <h3>Set your city</h3>
+      <p>Reply CITY followed by your town, e.g. <b>CITY Nepalgunj</b>.</p>
+    </div>
+    <div class="liquid-glass step-card reveal">
+      <span class="step-num">Step 3</span>
+      <h3>Send a command</h3>
+      <p><b>CALL NOW</b> for news right now, or just wait for your daily call.</p>
+    </div>
+    <div class="liquid-glass step-card reveal">
+      <span class="step-num">Step 4</span>
+      <h3>Listen</h3>
+      <p>Get a voice note in your language, every morning.</p>
+    </div>
+  </div>
+</section>
+
+<section class="guide-section" id="commands">
+  <span class="card-eyebrow">Commands</span>
+  <h2>Everything you can ask NewsBuddy</h2>
+  <div class="cmd-grid">
+    <div class="liquid-glass cmd-card reveal">
+      <b>CALL NOW</b>
+      <p>Get your news as a voice note right away.</p>
+    </div>
+    <div class="liquid-glass cmd-card reveal">
+      <b>CALL IN 15</b>
+      <p>Get your news 15 minutes from now.</p>
+    </div>
+    <div class="liquid-glass cmd-card reveal">
+      <b>TIME / TIME 7:00 AM</b>
+      <p>See or change your daily call time.</p>
+    </div>
+    <div class="liquid-glass cmd-card reveal">
+      <b>CITY / CITY Nepalgunj</b>
+      <p>See or change the town your news comes from.</p>
+    </div>
+    <div class="liquid-glass cmd-card reveal">
+      <b>NEWS TYPE / NEWS TYPE business, crime</b>
+      <p>See or choose your news topics.</p>
+    </div>
+    <div class="liquid-glass cmd-card reveal">
+      <b>HELP</b>
+      <p>See the full list of commands.</p>
+    </div>
+    <div class="liquid-glass cmd-card reveal">
+      <b>STOP</b>
+      <p>Pause your subscription anytime.</p>
+    </div>
+    <div class="liquid-glass cmd-card reveal">
+      <b>START</b>
+      <p>Resume your subscription.</p>
+    </div>
+  </div>
+  <div class="guide-cta-row">
+    <a class="cta cta-link" href="#signup">Get started →</a>
+  </div>
+</section>
+
 <section class="card-section" id="signup">
   <form class="card" id="signupForm" novalidate>
     <span class="card-eyebrow">Step 1 of 2</span>
@@ -416,6 +667,7 @@
     <p class="card-foot">Next, you'll open WhatsApp to set <b>your city</b> and <b>call time</b> — takes 30 seconds.</p>
   </form>
 </section>
+</div><!-- /flow-zone -->
 
 <footer>NewsBuddy — hyperlocal voice news for India &amp; Nepal</footer>
 
@@ -551,6 +803,191 @@
       setLoading(false);
     }
   });
+</script>
+
+<script>
+  // ── Scroll-driven entrance animations (progressive enhancement only) ─────────
+  // All content is fully visible without this script; it only layers subtle
+  // entrance animations on top. Skipped entirely under prefers-reduced-motion.
+  (function(){
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    // Word-by-word pull-up on the hero headline (on load — it's above the fold).
+    // Splits text nodes into per-word spans; keeps the .accent span intact.
+    const h1 = document.querySelector('.hero h1');
+    if (h1){
+      const nodes = Array.from(h1.childNodes);
+      h1.textContent = '';
+      let delay = 0;
+      nodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE){
+          node.textContent.split(/\s+/).filter(Boolean).forEach(word => {
+            const s = document.createElement('span');
+            s.className = 'word-up';
+            s.textContent = word;
+            s.style.animationDelay = delay + 'ms';
+            delay += 80;
+            h1.append(s, ' ');
+          });
+        } else {
+          node.classList.add('word-up');
+          node.style.animationDelay = delay + 'ms';
+          delay += 80;
+          h1.append(node, ' ');
+        }
+      });
+    }
+
+    // Reveal step/command cards once as they enter the viewport.
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting){
+          entry.target.classList.add('visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    // ── Scroll-driven flow path: How-it-works → Commands → signup button ────
+    const flowZone = document.querySelector('.flow-zone');
+    const flowWrap = flowZone && flowZone.querySelector('.flow-wrap');
+    if (flowWrap){
+      const svg = flowWrap.querySelector('.flow-svg');
+      const flowPaths = flowWrap.querySelectorAll('.flow-svg path');
+      const track = flowWrap.querySelector('.flow-track');
+      const prog = flowWrap.querySelector('.flow-progress');
+      const pulse = flowWrap.querySelector('.flow-pulse');
+      let pathLen = 0, ticking = false;
+      let zoneTop = 0, zoneH = 1;   // zone top (document coords) + height
+      let ySamples = [], yStart = 0, yEnd = 0;
+
+      const relRect = (el, zr) => {
+        const r = el.getBoundingClientRect();
+        return { left: r.left - zr.left, right: r.right - zr.left,
+                 top: r.top - zr.top, bottom: r.bottom - zr.top, height: r.height };
+      };
+
+      // Anchor the path to the real positions of all three sections: a left
+      // gutter line on narrow screens; on desktop it threads the first
+      // column gap of the step grid, crosses to the last column gap of the
+      // commands grid, then runs down the signup card's left side to end
+      // beside the submit button. Card text is never crossed — swings only
+      // happen in the vertical space between the grids.
+      function buildPath(){
+        const zr = flowZone.getBoundingClientRect();
+        const w = flowZone.clientWidth, h = flowZone.clientHeight;
+        const sg = relRect(document.querySelector('.step-grid'), zr);
+        const cg = relRect(document.querySelector('.cmd-grid'), zr);
+        const card = relRect(document.getElementById('signupForm'), zr);
+        const btn = relRect(document.getElementById('submitBtn'), zr);
+        const btnY = (btn.top + btn.bottom) / 2;
+        let d;
+        if (w < 640){
+          d = `M 6 ${sg.top - 8} C 12 ${sg.top + (btnY - sg.top) / 3},`
+            + ` 0 ${sg.top + (btnY - sg.top) * 2 / 3}, 6 ${btnY}`;
+        } else {
+          const s0 = relRect(document.querySelector('.step-card'), zr);
+          const ax = s0.right + 8;                      // first gap, step grid
+          const cCards = document.querySelectorAll('.cmd-card');
+          const c0 = relRect(cCards[0], zr);
+          let bx = ax;
+          cCards.forEach(c => {                         // last gap, cmd grid
+            const r = relRect(c, zr);
+            if (Math.abs(r.top - c0.top) < 2 && r.left - 7 > bx) bx = r.left - 7;
+          });
+          const ex = card.left - 22;                    // beside the signup card
+          const k1 = (cg.top - sg.bottom) * 0.4;
+          const k2 = (card.top - cg.bottom) * 0.4;
+          d = `M ${ax} ${sg.top - 8}`
+            + ` C ${ax + 5} ${sg.top + sg.height * 0.35}, ${ax - 5} ${sg.top + sg.height * 0.7}, ${ax} ${sg.bottom}`
+            + ` C ${ax} ${sg.bottom + k1}, ${bx} ${cg.top - k1}, ${bx} ${cg.top}`
+            + ` C ${bx + 4} ${cg.top + cg.height * 0.35}, ${bx - 4} ${cg.top + cg.height * 0.7}, ${bx} ${cg.bottom}`
+            + ` C ${bx} ${cg.bottom + k2}, ${ex} ${card.top - 10 - k2}, ${ex} ${card.top - 10}`
+            + ` L ${ex} ${btnY}`;
+        }
+        svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        flowPaths.forEach(p => p.setAttribute('d', d));
+        pathLen = track.getTotalLength();
+        // Sample the path once so scroll progress can map to vertical
+        // position instead of arc length — otherwise the pulse rushes
+        // through the long horizontal swings between sections. y is forced
+        // monotonic so the binary search in lengthAtY stays valid.
+        const n = Math.min(400, Math.max(40, Math.round(pathLen / 4)));
+        ySamples = new Array(n + 1);
+        let maxY = -Infinity;
+        for (let i = 0; i <= n; i++){
+          const len = pathLen * i / n;
+          maxY = Math.max(maxY, track.getPointAtLength(len).y);
+          ySamples[i] = { len, y: maxY };
+        }
+        yStart = ySamples[0].y;
+        yEnd = ySamples[n].y;
+        zoneTop = zr.top + window.scrollY;
+        zoneH = h;
+      }
+
+      // Map a target Y to the path length that reaches it: binary-search
+      // the monotonic samples, then interpolate between the neighbours.
+      function lengthAtY(ty){
+        let lo = 0, hi = ySamples.length - 1;
+        while (hi - lo > 1){
+          const mid = (lo + hi) >> 1;
+          if (ySamples[mid].y < ty) lo = mid; else hi = mid;
+        }
+        const a = ySamples[lo], b = ySamples[hi];
+        const t = b.y > a.y ? (ty - a.y) / (b.y - a.y) : 0;
+        return a.len + t * (b.len - a.len);
+      }
+
+      // One rAF-throttled update per frame: all reads first, then writes.
+      // Standard scrub-scroll progress: 0 when the zone's top edge reaches
+      // the viewport top, 1 when its bottom edge reaches the viewport
+      // bottom. Progress maps to a target Y inside the zone (clamped to the
+      // path's actual span), and the {length, y} lookup converts that to a
+      // path length so getPointAtLength (exactly once per frame) places the
+      // pulse on the path at that height.
+      function update(){
+        ticking = false;
+        const p = Math.min(1, Math.max(0,
+          (window.scrollY - zoneTop) / Math.max(1, zoneH - window.innerHeight)));
+        const ty = Math.min(yEnd, Math.max(yStart, p * zoneH));
+        const len = lengthAtY(ty);
+        const pt = track.getPointAtLength(len);
+        pulse.style.transform = `translate3d(${pt.x}px, ${pt.y}px, 0)`;
+        prog.style.strokeDashoffset = 1 - len / pathLen;
+      }
+
+      function onScroll(){
+        if (!ticking){ ticking = true; requestAnimationFrame(update); }
+      }
+
+      buildPath();
+      flowWrap.classList.add('flow-on');
+      update();
+      // Re-anchor whenever the zone's size changes (webfont swap, viewport
+      // resize, content reflow) — covers everything the resize event misses.
+      if (window.ResizeObserver){
+        new ResizeObserver(() => { buildPath(); update(); }).observe(flowZone);
+      }
+
+      // Listen for scroll only while the combined three-section zone is
+      // in or near the viewport.
+      const flowIo = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting){
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+          } else {
+            window.removeEventListener('scroll', onScroll);
+          }
+        });
+      }, { rootMargin: '25% 0px' });
+      flowIo.observe(flowZone);
+
+      window.addEventListener('resize', () => { buildPath(); onScroll(); });
+    }
+  })();
 </script>
 
 </body>
