@@ -46,7 +46,14 @@ def generate_voice_note(location: str, topic: Optional[str] = None,
         location: place name, e.g. "Uttarakhand", "Nepalgunj".
         topic: optional narrowing keyword, e.g. "accident".
         user_name: name for the greeting/sign-off (first name is used).
-        language: "en" is implemented; "hi"/"ne" raise NotImplementedError.
+        language: "en" and "hi" are live end-to-end ("hi" = Hindi script via
+                  translate_service + gTTS Hindi voice). "ne" never raises:
+                  Nepali translation is still stubbed, so it delivers the
+                  English script in the Indian-English voice. Corner case: if
+                  "hi" translation fails, the English fallback script is
+                  spoken by the HINDI gTTS voice (intelligible, Indian-accent
+                  English) -- language selects the voice, the script's actual
+                  language is decided upstream.
         output_path: where to write the .mp3. Defaults to
                      "<MEDIA_DIR>/voicenotes/<location>_<topic|general>.mp3",
                      anchored to settings.MEDIA_DIR (not the CWD) so it matches

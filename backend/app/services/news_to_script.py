@@ -37,13 +37,18 @@ def get_news_script(location: str, topic: Optional[str] = None,
         location: place name, e.g. "Uttarakhand", "Nepalgunj".
         topic: optional narrowing keyword, e.g. "accident".
         user_name: name for the greeting/sign-off (first name is used).
-        language: "en" is implemented; "hi"/"ne" raise NotImplementedError.
+        language: "en" and "hi" are live ("hi" translates the assembled script
+                  in one call via translate_service). "ne" falls back to the
+                  English script (Nepali translation is still stubbed) rather
+                  than raising.
 
     Returns:
         A ready-to-speak script string. fetch_news never raises (it returns []
-        on any failure), and generate_template_script renders a friendly
-        "no major news" script for an empty list -- so this always returns a
-        usable script, never an empty string or an exception, for language="en".
+        on any failure), generate_template_script renders a friendly
+        "no major news" script for an empty list, and hi/ne fall back to the
+        English script if translation is unavailable -- so this always returns
+        a usable script, never an empty string or an exception, for
+        "en"/"hi"/"ne".
     """
     articles = fetch_news(location, topic)
     return generate_template_script(articles, user_name, location, language)

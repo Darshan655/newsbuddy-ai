@@ -10,6 +10,11 @@ This is the zero-cost, offline path (no OpenAI key required) -- useful for local
 development, as an outage/rate-limit fallback, and for keeping per-call cost at
 zero. For the AI-generated equivalent, see openai_service.generate_script.
 
+Hindi/Nepali: the script is assembled in English from these templates, then the
+complete script is translated in a single translation call (deep-translator
+today; see translate_service.py). On any translation failure the English script
+is returned instead, so language never blocks delivery.
+
 Design note: we only ever speak what's already in each article's .snippet (or
 .title as a fallback). The templates add conversational scaffolding -- greeting,
 transitions, source attribution, sign-off -- but never invent news detail, since
@@ -109,7 +114,13 @@ def generate_template_script(
                        may be empty.
         user_name: user's name; the first name is used for greeting/sign-off.
         location: place name spoken in the greeting and the no-news message.
-        language: "en" is fully implemented. "hi" / "ne" are stubs for now.
+        language: "en" renders directly from the templates. "hi" / "ne" build
+                  the same English script, then translate the whole assembled
+                  script in one call via translate_service (full-sentence
+                  context translates far better than isolated phrases). If
+                  translation fails for any reason, the English script is
+                  returned instead (with a warning log), so callers always
+                  get a speakable script.
 
     Returns:
         A ready-to-speak script string. If news_articles is empty, returns a
@@ -117,15 +128,24 @@ def generate_template_script(
         signed off) rather than an empty/broken script.
 
     Raises:
-        NotImplementedError: for language "hi" or "ne" (templates pending).
-        ValueError: for any other unsupported language code.
+        ValueError: for any language code other than "en", "hi", "ne".
     """
     if language == "en":
         return _generate_english(news_articles, user_name, location)
     if language in ("hi", "ne"):
-        raise NotImplementedError(
-            "Hindi/Nepali templates pending - see template_script_service.py"
-        )
+        english = _generate_english(news_articles, user_name, location)
+        try:
+            try:
+                from app.services.translate_service import translate_text
+            except ImportError:  # standalone script run from services/
+                from translate_service import translate_text
+            return translate_text(english, language)
+        except Exception as e:
+            # Same fallback pattern as the CALL NOW task: never block delivery
+            # on translation -- serve English and make the failure visible.
+            print(f"[TemplateScript] WARNING: {language!r} translation failed, "
+                  f"falling back to English script: {e}")
+            return english
     raise ValueError(f"Unsupported language: {language!r}")
 
 

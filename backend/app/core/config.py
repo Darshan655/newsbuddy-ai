@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # ngrok/deployed origin, e.g. https://abc123.ngrok.io
     PUBLIC_BASE_URL: str = "http://localhost:8000"
 
+    # Google Cloud Translation (Hindi/Nepali script translation)
+    GOOGLE_TRANSLATE_API_KEY: str = ""
+
     # Supabase Storage (voice-note hosting)
     # On Railway the local filesystem is ephemeral and the /voicenotes static mount
     # isn't a durable public host, so generated .mp3s are uploaded to a public

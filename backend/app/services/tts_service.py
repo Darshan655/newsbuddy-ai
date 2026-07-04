@@ -7,7 +7,10 @@ returns HTTP 403 from many cloud IPs (e.g. Railway), which broke audio generatio
 in production. We use it to turn a generated news script into an .mp3 the
 call/WhatsApp layer can play or send.
 
-We request Google's `co.in` TLD so English is spoken with an Indian accent, which
+"hi" scripts (real Hindi text since translate_service switched to
+deep-translator) are synthesized with gTTS's Hindi voice. Everything else --
+"en", and "ne" while Nepali translation is still stubbed to English text --
+uses Google's `co.in` TLD so English is spoken with an Indian accent, which
 fits a NewsBuddy serving India/Nepal far better than US English on local
 place/person names.
 
@@ -15,6 +18,7 @@ Usage:
     from app.services.tts_service import text_to_speech
 
     path = text_to_speech("Good morning!", "out.mp3", language="en")
+    path = text_to_speech("सुप्रभात!", "out.mp3", language="hi")
 """
 import os
 
@@ -28,10 +32,11 @@ def text_to_speech(text: str, output_path: str, language: str = "en") -> str:
     Args:
         text: the text to speak (e.g. a generated news script).
         output_path: where to write the .mp3 (parent directories are created).
-        language: accepted for API compatibility. The script layer only emits
-                  English today, so every value currently synthesizes Indian-accent
-                  English (gTTS lang="en", tld="co.in"); a real hi/ne voice can be
-                  wired in here once script phrasing is tuned per language.
+        language: "hi" synthesizes with gTTS's Hindi voice. Everything else
+                  ("en", plus "ne" and unknown codes) synthesizes Indian-accent
+                  English (lang="en", tld="co.in"): Nepali scripts still fall
+                  back to English text at the translation layer, so a Nepali
+                  voice branch would have nothing to feed it yet.
 
     Returns:
         output_path -- the file that was written.
@@ -46,9 +51,15 @@ def text_to_speech(text: str, output_path: str, language: str = "en") -> str:
     if parent:
         os.makedirs(parent, exist_ok=True)
 
-    # gTTS is synchronous (no asyncio needed, unlike edge-tts). tld="co.in" selects
-    # Google's Indian-English accent.
-    tts = gTTS(text=text, lang="en", tld="co.in")
+    # gTTS is synchronous (no asyncio needed, unlike edge-tts).
+    # Callers pass user.language, which may be a LanguageEnum member rather
+    # than a plain string; it's a str subclass with value "hi"/"ne"/"en", so
+    # this comparison matches both forms.
+    if language == "hi":
+        tts = gTTS(text=text, lang="hi")
+    else:
+        # tld="co.in" selects Google's Indian-English accent.
+        tts = gTTS(text=text, lang="en", tld="co.in")
     tts.save(output_path)
     return output_path
 
