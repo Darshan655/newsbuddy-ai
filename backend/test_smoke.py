@@ -72,6 +72,19 @@ def test_whatsapp_parser():
     assert wh._parse_call_in_minutes("hello how are you") is None
     print("  ✅ Reschedule parser works")
 
+    # NEWS IN is the primary reschedule command; CALL IN stays a silent alias.
+    assert wh._parse_call_in_minutes("NEWS IN 15") == 15
+    assert wh._parse_call_in_minutes("news in 20") == 20
+    assert wh._parse_call_in_minutes("news after 10") == 10
+    assert wh._parse_call_in_minutes("NEWS NOW") is None  # instant, not a reschedule
+    assert wh._parse_call_in_minutes("NEWS TYPE business") is None
+    print("  ✅ NEWS IN parses like CALL IN")
+
+    # NEWS NOW is the primary instant command; old CALL variants stay aliases.
+    for cmd in ("NEWS NOW", "CALL NOW", "CALL", "CALL ME"):
+        assert cmd in wh.NOW_COMMANDS, f"{cmd} missing from NOW_COMMANDS"
+    print("  ✅ NOW_COMMANDS accepts new + legacy text")
+
 
 def test_fallback_script():
     print("\nTesting fallback script generation...")

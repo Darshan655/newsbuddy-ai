@@ -67,7 +67,7 @@ def send_whatsapp_voice_note(
         body = (
             "🎙️ Your NewsBuddy voice note is ready!\n\n"
             f"Tap to listen: {media_url}\n\n"
-            "_Reply CALL NOW for a fresh update anytime._"
+            "_Reply NEWS NOW for a fresh update anytime._"
         )
         msg = client.messages.create(
             from_=settings.TWILIO_WHATSAPP_FROM,
@@ -159,7 +159,7 @@ def send_post_call_summary(
         f"{summary}"
         f"{links_section}\n\n"
         f"─────────────────\n"
-        f"_Reply *HELP* for options | Reply *CALL NOW* for another call_"
+        f"_Reply *HELP* for options | Reply *NEWS NOW* for another update_"
     )
     return send_message(to_number, message)
 
@@ -178,21 +178,21 @@ def send_breaking_news_alert(
         message = (
             f"🚨 *ब्रेकिंग न्यूज़ — {city}*\n\n"
             f"{headline}\n\n"
-            f"📞 Reply *CALL NOW* for full details on call\n"
+            f"📞 Reply *NEWS NOW* for full details\n"
             f"_NewsBuddy Premium Alert_"
         )
     elif language == "ne":
         message = (
             f"🚨 *ब्रेकिङ न्युज — {city}*\n\n"
             f"{headline}\n\n"
-            f"📞 *CALL NOW* भन्नुहोस् विस्तृत जानकारीको लागि\n"
+            f"📞 *NEWS NOW* भन्नुहोस् विस्तृत जानकारीको लागि\n"
             f"_NewsBuddy Premium Alert_"
         )
     else:
         message = (
             f"🚨 *Breaking News — {city}*\n\n"
             f"{headline}\n\n"
-            f"📞 Reply *CALL NOW* for full details\n"
+            f"📞 Reply *NEWS NOW* for full details\n"
             f"_NewsBuddy Premium Alert_"
         )
     return send_message(to_number, message)
@@ -212,21 +212,21 @@ def send_missed_call_notification(
         message = (
             f"📞 {first_name} जी, हमने आपको call करने की कोशिश की लेकिन आप available नहीं थे।\n\n"
             f"Reply करें:\n"
-            f"• *CALL NOW* — अभी call करें\n"
-            f"• *CALL IN 15* — 15 मिनट में call करें\n"
+            f"• *NEWS NOW* — अभी news सुनें\n"
+            f"• *NEWS IN 15* — 15 मिनट में news सुनें\n"
             f"• *TIME 10:00* — daily call time बदलें"
         )
     elif language == "ne":
         message = (
             f"📞 {first_name} जी, हामीले तपाईंलाई call गर्ने प्रयास गर्यौं तर सम्पर्क हुन सकेन।\n\n"
-            f"*CALL NOW* वा *CALL IN 15* भन्नुहोस्।"
+            f"*NEWS NOW* वा *NEWS IN 15* भन्नुहोस्।"
         )
     else:
         message = (
             f"📞 Hi {first_name}! We tried to call but couldn't reach you.\n\n"
             f"Reply:\n"
-            f"• *CALL NOW* — Call me now\n"
-            f"• *CALL IN 15* — Call me in 15 minutes\n"
+            f"• *NEWS NOW* — Get my news now\n"
+            f"• *NEWS IN 15* — Get news in 15 minutes\n"
             f"• *TIME 10:00* — Change my daily call time"
         )
     return send_message(to_number, message)

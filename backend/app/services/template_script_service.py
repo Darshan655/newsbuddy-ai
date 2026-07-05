@@ -141,7 +141,7 @@ def generate_template_script(
                 from translate_service import translate_text
             return translate_text(english, language)
         except Exception as e:
-            # Same fallback pattern as the CALL NOW task: never block delivery
+            # Same fallback pattern as the NEWS NOW task: never block delivery
             # on translation -- serve English and make the failure visible.
             print(f"[TemplateScript] WARNING: {language!r} translation failed, "
                   f"falling back to English script: {e}")

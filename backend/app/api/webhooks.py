@@ -16,6 +16,11 @@ VALID_TOPICS = [c.value for c in NewsCategory]
 # Language codes the LANGUAGE command accepts, mapped to display names.
 LANGUAGE_NAMES = {"en": "English", "hi": "Hindi", "ne": "Nepali"}
 
+# Phrases that trigger an immediate voice note. NEWS NOW is the primary
+# command; CALL NOW / CALL / CALL ME stay as silent aliases so existing
+# users' muscle memory keeps working.
+NOW_COMMANDS = ("NEWS NOW", "CALL NOW", "CALL", "CALL ME")
+
 
 # ── WhatsApp Webhook ───────────────────────────────────────────────────────────
 
@@ -201,10 +206,10 @@ async def whatsapp_webhook(
     if message.upper() == "HELP":
         reply = (
             "*NewsBuddy Commands:*\n\n"
-            "📞 *CALL NOW* — Request a call right now\n"
+            "📞 *NEWS NOW* — Get your news right now\n"
             "⏰ *TIME* — See your daily call time\n"
             "⏰ *TIME 7:00 AM* — Change your daily call time\n"
-            "🔄 *CALL IN 15* — Call me in 15 minutes\n"
+            "🔄 *NEWS IN 15* — Get news in 15 minutes\n"
             "📍 *CITY* — See your current city\n"
             "📍 *CITY Pokhara* — Change your city\n"
             "📰 *NEWS TYPE* — See your news topics\n"
@@ -223,11 +228,11 @@ async def whatsapp_webhook(
         reply = "✅ You've been unsubscribed. Reply START to resume anytime."
         return _twilio_twiml_response(reply)
 
-    # ── CALL NOW → on-demand WhatsApp voice note ───────────────────────────────
-    if message.upper() in ("CALL NOW", "CALL", "CALL ME") and user:
+    # ── NEWS NOW (alias: CALL NOW) → on-demand WhatsApp voice note ─────────────
+    if message.upper() in NOW_COMMANDS and user:
         # Create the CallLog already claimed ('in_progress', not 'scheduled') so
         # the VAPI phone-call sweeper (process_pending_calls) never dials it —
-        # CALL NOW is now voice-note delivery, owned by send_voice_note_now.
+        # NEWS NOW is voice-note delivery, owned by send_voice_note_now.
         call = CallLog(user_id=user.id, scheduled_at=datetime.utcnow(), status="in_progress")
         db.add(call)
         db.commit()
@@ -244,7 +249,7 @@ async def whatsapp_webhook(
             call.status = "failed"
             call.error_message = f"Failed to enqueue voice-note task: {e}"
             db.commit()
-            print(f"[Webhook] CALL NOW enqueue failed for user {user.id}: {e}")
+            print(f"[Webhook] NEWS NOW enqueue failed for user {user.id}: {e}")
             reply = "😕 Sorry, I'm having trouble right now — please try again in a moment."
 
         return _twilio_twiml_response(reply)
@@ -335,13 +340,14 @@ def _format_time_12h(hhmm: str) -> str:
 def _parse_call_in_minutes(message: str) -> int | None:
     """
     Extract minutes from messages like:
-    'call me in 15 minutes', 'call in 10', '15 minutes', 'CALL IN 15'
+    'NEWS IN 15', 'call me in 15 minutes', 'call in 10', '15 minutes',
+    'CALL IN 15' (kept as a silent alias of NEWS IN)
     """
     msg = message.lower()
     patterns = [
-        r"call\s+(?:me\s+)?in\s+(\d+)",
+        r"(?:news|call)\s+(?:me\s+)?in\s+(\d+)",
         r"(\d+)\s+minutes?",
-        r"call\s+after\s+(\d+)",
+        r"(?:news|call)\s+after\s+(\d+)",
     ]
     for pattern in patterns:
         m = re.search(pattern, msg)

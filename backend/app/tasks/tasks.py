@@ -45,7 +45,7 @@ def schedule_daily_calls(self):
                 if user.subscription_tier == "free" and (user.calls_this_week or 0) >= 3:
                     continue
 
-                # 2. Already delivered (or a CALL NOW in flight) today -> skip.
+                # 2. Already delivered (or a NEWS NOW in flight) today -> skip.
                 already_today = (
                     db.query(CallLog)
                     .filter(
@@ -412,9 +412,10 @@ def send_breaking_news_alert_task(news_item_id: int):
 def send_voice_note_now(call_id: int):
     """
     Generate a spoken local-news voice note and deliver it over WhatsApp for an
-    on-demand "CALL NOW" request.
+    on-demand "NEWS NOW" request (formerly CALL NOW; the old text still works
+    as a silent alias).
 
-    This replaces the VAPI phone-call path for CALL NOW: the webhook creates the
+    This replaces the VAPI phone-call path for NEWS NOW: the webhook creates the
     CallLog already 'in_progress' (not 'scheduled'), so process_pending_calls
     never dials it -- this task owns delivery end to end.
 
@@ -448,7 +449,7 @@ def send_voice_note_now(call_id: int):
               f"name={user.name}, city={user.city}, language={user.language}")
 
         try:
-            # Unique per-request filename so concurrent CALL NOWs can't clobber
+            # Unique per-request filename so concurrent NEWS NOWs can't clobber
             # each other's audio; lives under the /voicenotes static mount.
             output_path = str(VOICENOTES_DIR / f"callnow_{call.id}.mp3")
 
@@ -536,7 +537,7 @@ def send_voice_note_now(call_id: int):
 
 def _notify_voicenote_failure(to_number: str):
     """Best-effort 'sorry' WhatsApp text so the user isn't left hanging after the
-    initial CALL NOW ack. Never raises."""
+    initial NEWS NOW ack. Never raises."""
     if not to_number:
         return
     try:
