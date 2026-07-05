@@ -49,11 +49,11 @@ def generate_voice_note(location: str, topic: Optional[str] = None,
         language: "en" and "hi" are live end-to-end ("hi" = Hindi script via
                   translate_service + gTTS Hindi voice). "ne" never raises:
                   Nepali translation is still stubbed, so it delivers the
-                  English script in the Indian-English voice. Corner case: if
-                  "hi" translation fails, the English fallback script is
-                  spoken by the HINDI gTTS voice (intelligible, Indian-accent
-                  English) -- language selects the voice, the script's actual
-                  language is decided upstream.
+                  English script in the Indian-English voice. If "hi"
+                  translation fails, the English fallback script is spoken in
+                  the normal Indian-English voice too: text_to_speech only
+                  uses the Hindi voice when the text actually contains
+                  Devanagari.
         output_path: where to write the .mp3. Defaults to
                      "<MEDIA_DIR>/voicenotes/<location>_<topic|general>.mp3",
                      anchored to settings.MEDIA_DIR (not the CWD) so it matches

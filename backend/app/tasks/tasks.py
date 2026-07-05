@@ -65,12 +65,28 @@ def schedule_daily_calls(self):
                 # users in the same city can't clobber each other's audio under
                 # the shared /voicenotes static mount.
                 output_path = str(VOICENOTES_DIR / f"daily_{user.id}_{today.isoformat()}.mp3")
-                audio_path = generate_voice_note(
-                    location=user.city,
-                    topic=None,
-                    user_name=user.name,
-                    output_path=output_path,
-                )
+
+                fallback_used = False
+                try:
+                    audio_path = generate_voice_note(
+                        location=user.city,
+                        topic=None,
+                        user_name=user.name,
+                        language=user.language,
+                        output_path=output_path,
+                    )
+                except NotImplementedError:
+                    # Hindi/Nepali templates are still stubbed -> deliver in English.
+                    fallback_used = True
+                    audio_path = generate_voice_note(
+                        location=user.city,
+                        topic=None,
+                        user_name=user.name,
+                        language="en",
+                        output_path=output_path,
+                    )
+                    print(f"[Task] schedule_daily_calls: language fallback to English "
+                          f"for user {user.id} (lang={user.language})")
 
                 # 4. Build the public media URL Twilio fetches, then send.
                 # generate_voice_note returns a Supabase public URL (https://...);
@@ -81,6 +97,8 @@ def schedule_daily_calls(self):
                 else:
                     media_url = f"{settings.PUBLIC_BASE_URL.rstrip('/')}/voicenotes/{os.path.basename(audio_path)}"
                 caption = f"🎙️ Your NewsBuddy news update for {user.city}"
+                if fallback_used:
+                    caption += " (News in English — Hindi/Nepali coming soon)"
                 result = send_whatsapp_voice_note(to_number, media_url, caption)
 
                 # 5. Record the outcome, isolated per user via a per-user commit.

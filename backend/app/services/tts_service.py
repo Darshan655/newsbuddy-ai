@@ -25,6 +25,15 @@ import os
 from gtts import gTTS
 
 
+def _contains_devanagari(text: str) -> bool:
+    """True if text has at least one Devanagari character (U+0900-U+097F).
+
+    A real Hindi translation is overwhelmingly Devanagari; the English
+    fallback script contains none, so one character is a reliable signal.
+    """
+    return any("\u0900" <= ch <= "\u097f" for ch in text)
+
+
 def text_to_speech(text: str, output_path: str, language: str = "en") -> str:
     """
     Convert text to an .mp3 audio file and return the output path.
@@ -32,7 +41,11 @@ def text_to_speech(text: str, output_path: str, language: str = "en") -> str:
     Args:
         text: the text to speak (e.g. a generated news script).
         output_path: where to write the .mp3 (parent directories are created).
-        language: "hi" synthesizes with gTTS's Hindi voice. Everything else
+        language: "hi" synthesizes with gTTS's Hindi voice -- but only when the
+                  text actually contains Devanagari. If a "hi" request arrives
+                  with pure-Latin text (the English fallback script served when
+                  translation fails), it's spoken as Indian-accent English
+                  instead of English words in the Hindi voice. Everything else
                   ("en", plus "ne" and unknown codes) synthesizes Indian-accent
                   English (lang="en", tld="co.in"): Nepali scripts still fall
                   back to English text at the translation layer, so a Nepali
@@ -55,7 +68,12 @@ def text_to_speech(text: str, output_path: str, language: str = "en") -> str:
     # Callers pass user.language, which may be a LanguageEnum member rather
     # than a plain string; it's a str subclass with value "hi"/"ne"/"en", so
     # this comparison matches both forms.
-    if language == "hi":
+    #
+    # The Devanagari check guards the translation-failure fallback: when
+    # deep-translator fails for a "hi" user, the caller passes the English
+    # script but still says language="hi" -- without the check, that English
+    # text would be read by the Hindi voice.
+    if language == "hi" and _contains_devanagari(text):
         tts = gTTS(text=text, lang="hi")
     else:
         # tld="co.in" selects Google's Indian-English accent.
